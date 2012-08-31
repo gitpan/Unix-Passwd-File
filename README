@@ -3,7 +3,7 @@ NAME
     entries
 
 VERSION
-    version 0.03
+    version 0.04
 
 SYNOPSIS
      use Unix::Passwd::Files;
@@ -178,7 +178,16 @@ FUNCTIONS
 
     *   gid => *any*
 
-        Pick a specific new GID.
+        Pick a specific GID when creating group.
+
+    *   group => *any*
+
+        Select primary group (default is group with same name as user).
+
+        Normally, a user's primary group with group with the same name as
+        user, which will be created if does not already exist. You can pick
+        another group here, which must already exist (and in this case, the
+        group with the same name as user will not be created).
 
     *   home* => *str*
 
@@ -191,7 +200,7 @@ FUNCTIONS
 
     *   max_gid => *any*
 
-        Pick a range for new GID.
+        Pick a range for GID when creating group.
 
     *   max_pass_age => *int*
 
@@ -204,7 +213,7 @@ FUNCTIONS
 
     *   min_gid => *any*
 
-        Pick a range for new GID.
+        Pick a range for GID when creating group.
 
     *   min_pass_age => *int*
 
