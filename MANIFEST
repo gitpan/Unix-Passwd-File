@@ -40,6 +40,7 @@ t/group_exists.t
 t/is_member.t
 t/list_groups.t
 t/list_users.t
+t/list_users_and_groups.t
 t/modify_group.t
 t/modify_user.t
 t/release-pod-coverage.t
