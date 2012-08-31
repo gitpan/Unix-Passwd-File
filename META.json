@@ -27,6 +27,7 @@
       "runtime" : {
          "requires" : {
             "File::Flock" : 0,
+            "List::MoreUtils" : 0,
             "Log::Any" : 0,
             "Rinci" : "v1.1.28",
             "UUID::Random" : 0,
@@ -36,6 +37,7 @@
       "test" : {
          "requires" : {
             "File::Copy::Recursive" : 0,
+            "File::Slurp" : 0,
             "File::chdir" : 0,
             "Test::More" : "0.98"
          }
@@ -48,6 +50,6 @@
          "url" : "http://github.com/sharyanto/perl-Unix-Passwd-File"
       }
    },
-   "version" : "0.01"
+   "version" : "0.02"
 }
 

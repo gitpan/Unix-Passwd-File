@@ -5,20 +5,33 @@ use strict;
 use warnings;
 use Log::Any '$log';
 
-our $VERSION = '0.01'; # VERSION
+our $VERSION = '0.02'; # VERSION
 
 use File::Flock;
 use List::Util qw(max first);
+use List::MoreUtils qw(firstidx);
 
 our @ISA       = qw(Exporter);
 our @EXPORT_OK = qw(
-                       get_user list_users delete_user modify_user add_user
-                       get_max_uid
-                       set_user_password
-                       get_group list_groups delete_group modify_group add_group
-                       get_max_gid
+                       add_group
+                       add_user
                        add_user_to_group
+                       delete_group
+                       delete_user
                        delete_user_from_group
+                       get_group
+                       get_max_gid
+                       get_max_uid
+                       get_user
+                       get_user_groups
+                       group_exists
+                       is_member
+                       list_groups
+                       list_users
+                       modify_group
+                       modify_user
+                       set_user_password
+                       user_exists
                );
 
 our %SPEC;
@@ -29,10 +42,23 @@ my %common_args = (
         schema  => ['str*' => {default=>'/etc'}],
     },
 );
+my %write_args = (
+    backup => {
+        summary => 'Whether to backup when modifying files',
+        description => <<'_',
 
-my $re_user  = qr/\A[A-Za-z0-9._-]+\z/;
-my $re_group = $re_user;
-my $re_field = qr/\A[^\n:]*\z/;
+Backup is written with `.bak` extension in the same directory. Unmodified file
+will not be backed up. Previous backup will be overwritten.
+
+_
+        schema  => ['bool' => {default=>0}],
+    },
+);
+
+my $re_user   = qr/\A[A-Za-z0-9._-]+\z/;
+my $re_group  = $re_user;
+my $re_field  = qr/\A[^\n:]*\z/;
+my $re_posint = qr/\A[1-9][0-9]*\z/;
 
 my %passwd_fields = (
     user => {
@@ -188,13 +214,24 @@ my %gshadow_fields = (
         index => 3,
         schema  => ['str*' => {match => $re_field}],
         summary => 'List of usernames that are members of this group, '.
-            'separated by commas; usually empty since this is already in group',
+            'separated by commas; You should use the same list of users as in '.
+                '/etc/group.',
     },
 );
 my @gshadow_field_names;
 for (keys %gshadow_fields) {
     $gshadow_field_names[$gshadow_fields{$_}{index}] = $_;
     delete $gshadow_fields{$_}{index};
+}
+
+sub _backup {
+    my ($fh, $path) = @_;
+    seek $fh, 0, 0 or return [500, "Can't seek: $!"];
+    open my($bak), ">", "$path.bak" or return [500, "Can't open $path.bak: $!"];
+    while (<$fh>) { print $bak $_ }
+    close $bak or return [500, "Can't write $path.bak: $!"];
+    # XXX set ctime & mtime of backup file?
+    [200];
 }
 
 # all public functions in this module uses the _routine, which contains the
@@ -220,7 +257,9 @@ for (keys %gshadow_fields) {
 # is set.
 #
 # to write, we open once but with mode +< instead of <. we read first then we
-# seek back to beginning and write from in-memory data.
+# seek back to beginning and write from in-memory data. if
+# $stash{write_passwd} and so on is set to false, routine cancel the write
+# (can be used e.g. when there is no change so no need to write).
 #
 # final result is in $stash{res} or non-success result returned by hook.
 sub _routine {
@@ -369,38 +408,58 @@ sub _routine {
 
         # write files
 
-        if ($args{_write_shadow}) {
+        if ($args{_write_shadow} && ($stash{write_shadow}//1)) {
+            if ($args{backup}) {
+                my $res = _backup($fhs, "$etc/shadow");
+                return $res if $res->[0] != 200;
+            }
             seek $fhs, 0, 0 or return [500, "Can't seek in $etc/shadow: $!"];
             for (@shadow) {
                 print $fhs join(":", map {$_//""} @$_), "\n";
             }
+            truncate $fhs, tell($fhs);
             close $fhs or return [500, "Can't close $etc/shadow: $!"];
             chmod 0640, "$etc/shadow"; # check error?
         }
 
-        if ($args{_write_passwd}) {
+        if ($args{_write_passwd} && ($stash{write_passwd}//1)) {
+            if ($args{backup}) {
+                my $res = _backup($fhp, "$etc/passwd");
+                return $res if $res->[0] != 200;
+            }
             seek $fhp, 0, 0 or return [500, "Can't seek in $etc/passwd: $!"];
             for (@passwd) {
                 print $fhp join(":", map {$_//""} @$_), "\n";
             }
+            truncate $fhp, tell($fhp);
             close $fhp or return [500, "Can't close $etc/passwd: $!"];
             chmod 0644, "$etc/passwd"; # check error?
         }
 
-        if ($args{_write_gshadow}) {
+        if ($args{_write_gshadow} && ($stash{write_gshadow}//1)) {
+            if ($args{backup}) {
+                my $res = _backup($fhgs, "$etc/gshadow");
+                return $res if $res->[0] != 200;
+            }
             seek $fhgs, 0, 0 or return [500, "Can't seek in $etc/gshadow: $!"];
             for (@gshadow) {
                 print $fhgs join(":", map {$_//""} @$_), "\n";
             }
+            truncate $fhgs, tell($fhgs);
             close $fhgs or return [500, "Can't close $etc/gshadow: $!"];
             chmod 0640, "$etc/gshadow"; # check error?
         }
 
-        if ($args{_write_group}) {
+        if ($args{_write_group} && ($stash{write_group}//1)) {
+            if ($args{backup}) {
+                my $res = _backup($fhg, "$etc/group");
+                return $res if $res->[0] != 200;
+            }
             seek $fhg, 0, 0 or return [500, "Can't seek in $etc/group: $!"];
             for (@group) {
                 print $fhg join(":", map {$_//""} @$_), "\n";
             }
+            truncate $fhg, tell($fhg);
             close $fhg or return [500, "Can't close $etc/group: $!"];
             chmod 0644, "$etc/group"; # check error?
         }
@@ -544,6 +603,31 @@ sub get_user {
     );
 }
 
+$SPEC{user_exists} = {
+    v => 1.1,
+    summary => 'Check whether user exists',
+    args => {
+        %common_args,
+        user => {
+            schema => 'str*',
+        },
+        uid => {
+            schema => 'int*',
+        },
+    },
+    result_naked => 1,
+    result => {
+        schema => 'bool*',
+    },
+};
+sub user_exists {
+    my %args = @_;
+    my $res = get_user(%args);
+    if ($res->[0] == 404) { return 0 }
+    elsif ($res->[0] == 200) { return 1 }
+    else { return undef }
+}
+
 $SPEC{list_groups} = {
     v => 1.1,
     summary => 'List Unix groups in group file',
@@ -666,6 +750,131 @@ sub get_group {
             [404, "Not found"];
         },
     );
+}
+
+$SPEC{group_exists} = {
+    v => 1.1,
+    summary => 'Check whether group exists',
+    args => {
+        %common_args,
+        group => {
+            schema => 'str*',
+        },
+        gid => {
+            schema => 'int*',
+        },
+    },
+    result_naked => 1,
+    result => {
+        schema => 'bool',
+    },
+};
+sub group_exists {
+    my %args = @_;
+    my $res = get_group(%args);
+    if ($res->[0] == 404) { return 0 }
+    elsif ($res->[0] == 200) { return 1 }
+    else { return undef }
+}
+
+$SPEC{get_user_groups} = {
+    v => 1.1,
+    summary => 'Return groups which the user belongs to',
+    args => {
+        %common_args,
+        user => {
+            req => 1,
+        },
+        detail => {
+            summary => 'If true, return all fields instead of just group names',
+            schema => ['bool' => {default => 0}],
+        },
+        with_field_names => {
+            summary => 'If false, don\'t return hash for each entry',
+            schema => [bool => {default=>1}],
+            description => <<'_',
+
+By default, when `detail=>1`, a hashref is returned for each entry containing
+field names and its values, e.g. `{group=>"neil", pass=>"x", gid=>500, ...}`.
+With `with_field_names=>0`, an arrayref is returned instead: `["neil", "x", 500,
+...]`.
+
+_
+        },
+    },
+};
+# this is a routine to list groups, but filtered using a criteria. can be
+# refactored into a common routine (along with list_groups) if needed, to reduce
+# duplication.
+sub get_user_groups {
+    my %args = @_;
+    my $user = $args{user} or return [400, "Please specify user"];
+    my $detail = $args{detail};
+    my $wfn    = $args{with_field_names} // ($detail ? 1:0);
+
+    _routine(
+        %args,
+        _read_passwd     => 1,
+        _read_group      => 1,
+        _read_gshadow    => $detail ? 2:0,
+        with_field_names => $wfn,
+        _after_read      => sub {
+            my $stash = shift;
+
+            my $passwd = $stash->{passwd};
+            return [404, "User not found"]
+                unless first {$_->[0] eq $user} @$passwd;
+
+            my @rows;
+            my $group    = $stash->{group};
+            my $grouph   = $stash->{grouph};
+
+            for (my $i=0; $i < @$group; $i++) {
+                my @mm = split /,/, $group->[$i][3];
+                next unless $user ~~ @mm || $group->[$i][0] eq $user;
+                if (!$detail) {
+                    push @rows, $group->[$i][0];
+                } elsif ($wfn) {
+                    push @rows, $grouph->[$i];
+                } else {
+                    push @rows, $group->[$i];
+                }
+            }
+
+            $stash->{res} = [200, "OK", \@rows];
+
+            $stash->{exit}++;
+            [200];
+        },
+    );
+}
+
+$SPEC{is_member} = {
+    v => 1.1,
+    summary => 'Check whether user is member of a group',
+    args => {
+        %common_args,
+        user => {
+            req => 1,
+        },
+        group => {
+            req => 1,
+        },
+    },
+    result_naked => 1,
+    result => {
+        schema => 'bool',
+    },
+};
+sub is_member {
+    my %args = @_;
+    my $user  = $args{user}  or return undef;
+    my $group = $args{group} or return undef;
+    my $res = get_group(etc_dir=>$args{etc_dir}, group=>$group);
+    $log->errorf("res=%s", $res);
+    return undef unless $res->[0] == 200;
+    my @mm = split /,/, $res->[2]{members};
+    return $user ~~ @mm ? 1:0;
 }
 
 $SPEC{get_max_uid} = {
@@ -821,7 +1030,7 @@ sub _add_group_or_user {
             }
             my $r = {gid=>$gid};
             push @$group  , [$gn, "x", $gid, $members];
-            push @$gshadow, [$gn, "*", "", ""];
+            push @$gshadow, [$gn, "*", "", $members];
 
             if ($which eq 'user') {
                 my $passwd  = $stash->{passwd};
@@ -856,6 +1065,7 @@ $SPEC{add_group} = {
     summary => 'Add a new group',
     args => {
         %common_args,
+        %write_args,
         group => {
             req => 1,
         },
@@ -886,7 +1096,8 @@ $SPEC{add_user} = {
     summary => 'Add a new user',
     args => {
         %common_args,
-        group => {
+        %write_args,
+        user => {
             req => 1,
         },
         gid => {
@@ -923,6 +1134,409 @@ sub add_user {
     _add_group_or_user('user', @_);
 }
 
+sub _modify_group_or_user {
+    my ($which, %args) = @_;
+
+    # TMP,schema
+    my ($user, $gn);
+    if ($which eq 'user') {
+        $user = $args{user} or return [400, "Please specify user"];
+    } else {
+        $gn = $args{group} or return [400, "Please specify group"];
+    }
+
+    if ($which eq 'user') {
+        if (defined($args{uid}) && $args{uid} !~ $re_posint) {
+            return [400, "Invalid uid"] }
+        if (defined($args{gid}) && $args{gid} !~ $re_posint) {
+            return [400, "Invalid gid"] }
+        if (defined($args{gecos}) && $args{gecos} !~ $re_field) {
+            return [400, "Invalid gecos"] }
+        if (defined($args{home}) && $args{home} !~ $re_field) {
+            return [400, "Invalid home"] }
+        if (defined($args{shell}) && $args{shell} !~ $re_field) {
+            return [400, "Invalid shell"] }
+        if (defined $args{pass}) {
+            $args{encpass} = $args{pass} eq '' ? '*' : _enc_pass($args{pass});
+            $args{pass} = "x";
+        }
+        if (defined($args{encpass}) && $args{encpass} !~ $re_field) {
+            return [400, "Invalid encpass"] }
+        if (defined($args{last_pwchange}) && $args{last_pwchange} !~ $re_posint) {
+            return [400, "Invalid last_pwchange"] }
+        if (defined($args{min_pass_age}) && $args{min_pass_age} !~ $re_posint) {
+            return [400, "Invalid min_pass_age"] }
+        if (defined($args{max_pass_age}) && $args{max_pass_age} !~ $re_posint) {
+            return [400, "Invalid max_pass_age"] }
+        if (defined($args{pass_warn_period}) && $args{pass_warn_period} !~ $re_posint) {
+            return [400, "Invalid pass_warn_period"] }
+        if (defined($args{pass_inactive_period}) &&
+                $args{pass_inactive_period} !~ $re_posint) {
+            return [400, "Invalid pass_inactive_period"] }
+        if (defined($args{expire_date}) && $args{expire_date} !~ $re_posint) {
+            return [400, "Invalid expire_date"] }
+    }
+
+    my ($gid, $members);
+    if ($which eq 'group') {
+        if (defined($args{gid}) && $args{gid} !~ $re_posint) {
+            return [400, "Invalid gid"] }
+        if (defined $args{pass}) {
+            $args{encpass} = $args{pass} eq '' ? '*' : _enc_pass($args{pass});
+            $args{pass} = "x";
+        }
+        if (defined($args{encpass}) && $args{encpass} !~ $re_field) {
+            return [400, "Invalid encpass"] }
+        if (defined $args{members}) {
+            if (ref($args{members}) eq 'ARRAY') { $args{members} = join(",",@{$args{members}}) }
+            $args{members} =~ $re_field or return [400, "Invalid members"];
+        }
+        if (defined $args{admins}) {
+            if (ref($args{admins}) eq 'ARRAY') { $args{admins} = join(",",@{$args{admins}}) }
+            $args{admins} =~ $re_field or return [400, "Invalid admins"];
+        }
+    }
+
+    _routine(
+        %args,
+        _lock            => 1,
+        _write_group     => $which eq 'group',
+        _write_gshadow   => $which eq 'group',
+        _write_passwd    => $which eq 'user',
+        _write_shadow    => $which eq 'user',
+        _after_read      => sub {
+            my $stash = shift;
+
+            my ($found, $changed);
+            if ($which eq 'user') {
+                my $passwd = $stash->{passwd};
+                for my $l (@$passwd) {
+                    next unless $l->[0] eq $user;
+                    $found++;
+                    for my $f (qw/pass uid gid gecos home shell/) {
+                        if (defined $args{$f}) {
+                            my $idx = firstidx {$_ eq $f} @passwd_field_names;
+                            $l->[$idx] = $args{$f};
+                            $changed++;
+                        }
+                    }
+                    last;
+                }
+                return [404, "Not found"] unless $found;
+                $stash->{write_passwd} = 0 unless $changed;
+
+                $changed = 0;
+                my $shadow = $stash->{shadow};
+                for my $l (@$shadow) {
+                    next unless $l->[0] eq $user;
+                    for my $f (qw/encpass last_pwchange min_pass_age max_pass_age
+                                  pass_warn_period pass_inactive_period expire_date/) {
+                        if (defined $args{$f}) {
+                            my $idx = firstidx {$_ eq $f} @shadow_field_names;
+                            $l->[$idx] = $args{$f};
+                            $changed++;
+                        }
+                    }
+                    last;
+                }
+                $stash->{write_shadow} = 0 unless $changed;
+            } else {
+                my $group = $stash->{group};
+                for my $l (@$group) {
+                    next unless $l->[0] eq $gn;
+                    $found++;
+                    for my $f (qw/pass gid members/) {
+                        if ($args{_before_set_group_field}) {
+                            $args{_before_set_group_field}->($l, $f, \%args);
+                        }
+                        if (defined $args{$f}) {
+                            my $idx = firstidx {$_ eq $f} @group_field_names;
+                            $l->[$idx] = $args{$f};
+                            $changed++;
+                        }
+                    }
+                    last;
+                }
+                return [404, "Not found"] unless $found;
+                $stash->{write_group} = 0 unless $changed;
+
+                $changed = 0;
+                my $gshadow = $stash->{gshadow};
+                for my $l (@$gshadow) {
+                    next unless $l->[0] eq $gn;
+                    for my $f (qw/encpass admins members/) {
+                        if (defined $args{$f}) {
+                            my $idx = firstidx {$_ eq $f} @gshadow_field_names;
+                            $l->[$idx] = $args{$f};
+                            $changed++;
+                        }
+                    }
+                    last;
+                }
+                $stash->{write_gshadow} = 0 unless $changed;
+            }
+            $stash->{res} = [200, "OK"];
+            [200];
+        },
+    );
+}
+
+$SPEC{modify_group} = {
+    v => 1.1,
+    summary => 'Modify an existing group',
+    description => <<'_',
+
+Specify arguments to modify corresponding fields. Unspecified fields will not be
+modified.
+
+_
+    args => {
+        %common_args,
+        %write_args,
+        map( {($_=>$group_fields{$_})} qw/group pass gid members/),
+        map( {($_=>$gshadow_fields{$_})}
+                 qw/encpass admins/),
+    },
+};
+sub modify_group {
+    _modify_group_or_user('group', @_);
+}
+
+$SPEC{modify_user} = {
+    v => 1.1,
+    summary => 'Modify an existing user',
+    description => <<'_',
+
+Specify arguments to modify corresponding fields. Unspecified fields will not be
+modified.
+
+_
+    args => {
+        %common_args,
+        %write_args,
+        map( {($_=>$passwd_fields{$_})} qw/user pass uid gid gecos home shell/),
+        map( {($_=>$shadow_fields{$_})}
+                 qw/encpass last_pwchange min_pass_age max_pass_age
+                   pass_warn_period pass_inactive_period expire_date/),
+    },
+};
+sub modify_user {
+    _modify_group_or_user('user', @_);
+}
+
+$SPEC{add_user_to_group} = {
+    v => 1.1,
+    summary => 'Add user to a group',
+    args => {
+        user => {
+            req => 1,
+        },
+        group => {
+            req => 1,
+        },
+    },
+};
+sub add_user_to_group {
+    my %args = @_;
+    my $user = $args{user} or return [400, "Please specify user"];
+    $user =~ $re_user or return [400, "Invalid user"];
+    my $gn   = $args{group}; # will be required by modify_group
+
+    # XXX check user exists
+    _modify_group_or_user(
+        'group',
+        %args,
+        _before_set_group_field => sub {
+            my ($l, $f, $args) = @_;
+            return unless $l->[0] eq $gn;
+            my @mm = split /,/, $l->[3];
+            return if $user ~~ @mm;
+            push @mm, $user;
+            $args->{members} = join(",", @mm);
+        },
+    );
+}
+
+
+$SPEC{delete_user_from_group} = {
+    v => 1.1,
+    summary => 'Delete user from a group',
+    args => {
+        user => {
+            req => 1,
+        },
+        group => {
+            req => 1,
+        },
+    },
+};
+sub delete_user_from_group {
+    my %args = @_;
+    my $user = $args{user} or return [400, "Please specify user"];
+    $user =~ $re_user or return [400, "Invalid user"];
+    my $gn   = $args{group}; # will be required by modify_group
+
+    # XXX check user exists
+    _modify_group_or_user(
+        'group',
+        %args,
+        _before_set_group_field => sub {
+            my ($l, $f, $args) = @_;
+            return unless $l->[0] eq $gn;
+            my @mm = split /,/, $l->[3];
+            return unless $user ~~ @mm;
+            @mm = grep {$_ ne $user} @mm;
+            $args->{members} = join(",", @mm);
+        },
+    );
+}
+
+$SPEC{set_user_password} = {
+    v => 1.1,
+    summary => 'Set user\'s password',
+    args => {
+        %common_args,
+        %write_args,
+        user => {
+            req => 1,
+        },
+        pass => {
+            req => 1,
+        },
+    },
+};
+sub set_user_password {
+    my %args = @_;
+
+    $args{user} or return [400, "Please specify user"];
+    defined($args{pass}) or return [400, "Please specify pass"];
+    modify_user(%args);
+}
+
+sub _delete_group_or_user {
+    my ($which, %args) = @_;
+
+    # TMP,schema
+    my ($user, $gn);
+    if ($which eq 'user') {
+        $user = $args{user} or return [400, "Please specify user"];
+        $gn = $user;
+    }
+    $gn //= $args{group};
+    $gn or return [400, "Please specify group"];
+
+    _routine(
+        %args,
+        _lock            => 1,
+        _write_group     => 1,
+        _write_gshadow   => 1,
+        _write_passwd    => $which eq 'user',
+        _write_shadow    => $which eq 'user',
+        _after_read      => sub {
+            my $stash = shift;
+            my ($i, $changed);
+
+            my $group = $stash->{group};
+            $changed = 0; $i = 0;
+            while ($i < @$group) {
+                if ($which eq 'user') {
+                    # also delete all mention of the user in any group
+                    my @mm = split /,/, $group->[$i][3];
+                    if ($user ~~ @mm) {
+                        $changed++;
+                        $group->[$i][3] = join(",", grep {$_ ne $user} @mm);
+                    }
+                }
+                if ($group->[$i][0] eq $gn) {
+                    $changed++;
+                    splice @$group, $i, 1; $i--;
+                }
+                $i++;
+            }
+            $stash->{write_group} = 0 unless $changed;
+
+            my $gshadow = $stash->{gshadow};
+            $changed = 0; $i = 0;
+            while ($i < @$gshadow) {
+                if ($which eq 'user') {
+                    # also delete all mention of the user in any group
+                    my @mm = split /,/, $gshadow->[$i][3];
+                    if ($user ~~ @mm) {
+                        $changed++;
+                        $gshadow->[$i][3] = join(",", grep {$_ ne $user} @mm);
+                    }
+                }
+                if ($gshadow->[$i][0] eq $gn) {
+                    $changed++;
+                    splice @$gshadow, $i, 1; $i--;
+                    last;
+                }
+                $i++;
+            }
+            $stash->{write_gshadow} = 0 unless $changed;
+
+            if ($which eq 'user') {
+                my $passwd = $stash->{passwd};
+                $changed = 0; $i = 0;
+                while ($i < @$passwd) {
+                    if ($passwd->[$i][0] eq $user) {
+                        $changed++;
+                        splice @$passwd, $i, 1; $i--;
+                        last;
+                    }
+                    $i++;
+                }
+                $stash->{write_passwd} = 0 unless $changed;
+
+                my $shadow = $stash->{shadow};
+                $changed = 0; $i = 0;
+                while ($i < @$shadow) {
+                    if ($shadow->[$i][0] eq $user) {
+                        $changed++;
+                        splice @$shadow, $i, 1; $i--;
+                        last;
+                    }
+                    $i++;
+                }
+                $stash->{write_shadow} = 0 unless $changed;
+            }
+
+            $stash->{res} = [200, "OK"];
+            [200];
+        },
+    );
+}
+
+$SPEC{delete_group} = {
+    v => 1.1,
+    summary => 'Delete a group',
+    args => {
+        %common_args,
+        %write_args,
+        group => {
+            req => 1,
+        },
+    },
+};
+sub delete_group {
+    _delete_group_or_user('group', @_);
+}
+
+$SPEC{delete_user} = {
+    v => 1.1,
+    summary => 'Delete a user',
+    args => {
+        %common_args,
+        %write_args,
+        user => {
+            req => 1,
+        },
+    },
+};
+sub delete_user {
+    _delete_group_or_user('user', @_);
+}
+
 1;
 # ABSTRACT: Manipulate /etc/{passwd,shadow,group,gshadow} entries
 
@@ -936,7 +1550,7 @@ Unix::Passwd::File - Manipulate /etc/{passwd,shadow,group,gshadow} entries
 
 =head1 VERSION
 
-version 0.01
+version 0.02
 
 =head1 SYNOPSIS
 
@@ -946,8 +1560,12 @@ version 0.01
  my $res = list_users(); # [200, "OK", ["root", ...]]
 
  # change location of files, return details
- $res = list_users(etc_dir=>"/some/path");
+ $res = list_users(etc_dir=>"/some/path", detail=>1);
      # [200, "OK", [{user=>"root", uid=>0, ...}, ...]]
+
+ # also return detail, but return array entries instead of hash
+ $res = list_users(detail=>1, with_field_names=>0);
+     # [200, "OK", [["root", "x", 0, ...], ...]]
 
  # getting user/group
  $res = get_group(user=>"buzz"); # [200, "OK", {user=>"buzz", uid=>501, ...}]
@@ -962,7 +1580,7 @@ version 0.01
  $res = modify_user(user=>"steven", home=>"/newhome/steven"); # [200, "OK"]
  $res = modify_group(group=>"neil"); # [404, "Not found"]
 
- # deleting user will also delete user's group, except using delete_group=>0
+ # deleting user will also delete user's group
  $res = delete_user(user=>"neil");
 
  # change user password
@@ -1043,6 +1661,13 @@ Arguments ('*' denotes required arguments):
 
 =over 4
 
+=item * B<backup> => I<bool> (default: 0)
+
+Whether to backup when modifying files.
+
+Backup is written with C<.bak> extension in the same directory. Unmodified file
+will not be backed up. Previous backup will be overwritten.
+
 =item * B<etc_dir> => I<str> (default: "/etc")
 
 Specify location of passwd files.
@@ -1079,6 +1704,13 @@ Arguments ('*' denotes required arguments):
 
 =over 4
 
+=item * B<backup> => I<bool> (default: 0)
+
+Whether to backup when modifying files.
+
+Backup is written with C<.bak> extension in the same directory. Unmodified file
+will not be backed up. Previous backup will be overwritten.
+
 =item * B<encpass> => I<str>
 
 Encrypted password.
@@ -1098,8 +1730,6 @@ Usually, it contains the full username.
 =item * B<gid> => I<any>
 
 Pick a specific new GID.
-
-=item * B<group>* => I<any>
 
 =item * B<home> => I<str>
 
@@ -1152,6 +1782,98 @@ User's home directory.
 =item * B<uid> => I<any>
 
 Pick a specific new UID.
+
+=item * B<user>* => I<any>
+
+=back
+
+Return value:
+
+Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+
+=head2 add_user_to_group(%args) -> [status, msg, result, meta]
+
+Add user to a group.
+
+Arguments ('*' denotes required arguments):
+
+=over 4
+
+=item * B<group>* => I<any>
+
+=item * B<user>* => I<any>
+
+=back
+
+Return value:
+
+Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+
+=head2 delete_group(%args) -> [status, msg, result, meta]
+
+Delete a group.
+
+Arguments ('*' denotes required arguments):
+
+=over 4
+
+=item * B<backup> => I<bool> (default: 0)
+
+Whether to backup when modifying files.
+
+Backup is written with C<.bak> extension in the same directory. Unmodified file
+will not be backed up. Previous backup will be overwritten.
+
+=item * B<etc_dir> => I<str> (default: "/etc")
+
+Specify location of passwd files.
+
+=item * B<group>* => I<any>
+
+=back
+
+Return value:
+
+Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+
+=head2 delete_user(%args) -> [status, msg, result, meta]
+
+Delete a user.
+
+Arguments ('*' denotes required arguments):
+
+=over 4
+
+=item * B<backup> => I<bool> (default: 0)
+
+Whether to backup when modifying files.
+
+Backup is written with C<.bak> extension in the same directory. Unmodified file
+will not be backed up. Previous backup will be overwritten.
+
+=item * B<etc_dir> => I<str> (default: "/etc")
+
+Specify location of passwd files.
+
+=item * B<user>* => I<any>
+
+=back
+
+Return value:
+
+Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+
+=head2 delete_user_from_group(%args) -> [status, msg, result, meta]
+
+Delete user from a group.
+
+Arguments ('*' denotes required arguments):
+
+=over 4
+
+=item * B<group>* => I<any>
+
+=item * B<user>* => I<any>
 
 =back
 
@@ -1263,6 +1985,79 @@ Return value:
 
 Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
 
+=head2 get_user_groups(%args) -> [status, msg, result, meta]
+
+Return groups which the user belongs to.
+
+Arguments ('*' denotes required arguments):
+
+=over 4
+
+=item * B<detail> => I<bool> (default: 0)
+
+If true, return all fields instead of just group names.
+
+=item * B<etc_dir> => I<str> (default: "/etc")
+
+Specify location of passwd files.
+
+=item * B<user>* => I<any>
+
+=item * B<with_field_names> => I<bool> (default: 1)
+
+If false, don't return hash for each entry.
+
+By default, when C<detail=>1>, a hashref is returned for each entry containing
+field names and its values, e.g. C<{group=>"neil", pass=>"x", gid=>500, ...}>.
+With C<with_field_names=>0>, an arrayref is returned instead: C<["neil", "x", 500,
+...]>.
+
+=back
+
+Return value:
+
+Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+
+=head2 group_exists(%args) -> bool
+
+Check whether group exists.
+
+Arguments ('*' denotes required arguments):
+
+=over 4
+
+=item * B<etc_dir> => I<str> (default: "/etc")
+
+Specify location of passwd files.
+
+=item * B<gid> => I<int>
+
+=item * B<group> => I<str>
+
+=back
+
+Return value:
+
+=head2 is_member(%args) -> bool
+
+Check whether user is member of a group.
+
+Arguments ('*' denotes required arguments):
+
+=over 4
+
+=item * B<etc_dir> => I<str> (default: "/etc")
+
+Specify location of passwd files.
+
+=item * B<group>* => I<any>
+
+=item * B<user>* => I<any>
+
+=back
+
+Return value:
+
 =head2 list_groups(%args) -> [status, msg, result, meta]
 
 List Unix groups in group file.
@@ -1324,6 +2119,191 @@ With C<with_field_names=>0>, an arrayref is returned instead: C<["neil", "x", 50
 Return value:
 
 Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+
+=head2 modify_group(%args) -> [status, msg, result, meta]
+
+Modify an existing group.
+
+Specify arguments to modify corresponding fields. Unspecified fields will not be
+modified.
+
+Arguments ('*' denotes required arguments):
+
+=over 4
+
+=item * B<admins> => I<str>
+
+It must be a comma-separated list of user names, or empty.
+
+=item * B<backup> => I<bool> (default: 0)
+
+Whether to backup when modifying files.
+
+Backup is written with C<.bak> extension in the same directory. Unmodified file
+will not be backed up. Previous backup will be overwritten.
+
+=item * B<encpass> => I<str>
+
+Encrypted password.
+
+=item * B<etc_dir> => I<str> (default: "/etc")
+
+Specify location of passwd files.
+
+=item * B<gid> => I<int>
+
+Numeric group ID.
+
+=item * B<group> => I<str>
+
+Group name.
+
+=item * B<members> => I<str>
+
+List of usernames that are members of this group, separated by commas.
+
+=item * B<pass> => I<str>
+
+Password, generally should be "x" which means password is encrypted in gshadow.
+
+=back
+
+Return value:
+
+Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+
+=head2 modify_user(%args) -> [status, msg, result, meta]
+
+Modify an existing user.
+
+Specify arguments to modify corresponding fields. Unspecified fields will not be
+modified.
+
+Arguments ('*' denotes required arguments):
+
+=over 4
+
+=item * B<backup> => I<bool> (default: 0)
+
+Whether to backup when modifying files.
+
+Backup is written with C<.bak> extension in the same directory. Unmodified file
+will not be backed up. Previous backup will be overwritten.
+
+=item * B<encpass> => I<str>
+
+Encrypted password.
+
+=item * B<etc_dir> => I<str> (default: "/etc")
+
+Specify location of passwd files.
+
+=item * B<expire_date> => I<int>
+
+The date of expiration of the account, expressed as the number of days since Jan 1, 1970.
+
+=item * B<gecos> => I<str>
+
+Usually, it contains the full username.
+
+=item * B<gid> => I<int>
+
+Numeric primary group ID for this user.
+
+=item * B<home> => I<str>
+
+User's home directory.
+
+=item * B<last_pwchange> => I<int>
+
+The date of the last password change, expressed as the number of days since Jan 1, 1970.
+
+=item * B<max_pass_age> => I<int>
+
+The number of days after which the user will have to change her password.
+
+=item * B<min_pass_age> => I<int>
+
+The number of days the user will have to wait before she will be allowed to change her password again.
+
+=item * B<pass> => I<str>
+
+Password, generally should be "x" which means password is encrypted in shadow.
+
+=item * B<pass_inactive_period> => I<int>
+
+The number of days after a password has expired (see max_pass_age) during which the password should still be accepted (and user should update her password during the next login).
+
+=item * B<pass_warn_period> => I<int>
+
+The number of days before a password is going to expire (see max_pass_age) during which the user should be warned.
+
+=item * B<shell> => I<str>
+
+User's home directory.
+
+=item * B<uid> => I<int>
+
+Numeric user ID.
+
+=item * B<user> => I<str>
+
+User (login) name.
+
+=back
+
+Return value:
+
+Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+
+=head2 set_user_password(%args) -> [status, msg, result, meta]
+
+Set user's password.
+
+Arguments ('*' denotes required arguments):
+
+=over 4
+
+=item * B<backup> => I<bool> (default: 0)
+
+Whether to backup when modifying files.
+
+Backup is written with C<.bak> extension in the same directory. Unmodified file
+will not be backed up. Previous backup will be overwritten.
+
+=item * B<etc_dir> => I<str> (default: "/etc")
+
+Specify location of passwd files.
+
+=item * B<pass>* => I<any>
+
+=item * B<user>* => I<any>
+
+=back
+
+Return value:
+
+Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+
+=head2 user_exists(%args) -> bool
+
+Check whether user exists.
+
+Arguments ('*' denotes required arguments):
+
+=over 4
+
+=item * B<etc_dir> => I<str> (default: "/etc")
+
+Specify location of passwd files.
+
+=item * B<uid> => I<int>
+
+=item * B<user> => I<str>
+
+=back
+
+Return value:
 
 =head1 AUTHOR
 

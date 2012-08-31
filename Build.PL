@@ -8,6 +8,7 @@ use Module::Build 0.3601;
 my %module_build_args = (
   "build_requires" => {
     "File::Copy::Recursive" => 0,
+    "File::Slurp" => 0,
     "File::chdir" => 0,
     "Module::Build" => "0.3601",
     "Test::More" => "0.98"
@@ -20,13 +21,14 @@ my %module_build_args = (
     "Steven Haryanto <stevenharyanto\@gmail.com>"
   ],
   "dist_name" => "Unix-Passwd-File",
-  "dist_version" => "0.01",
+  "dist_version" => "0.02",
   "license" => "perl",
   "module_name" => "Unix::Passwd::File",
   "recommends" => {},
   "recursive_test_files" => 1,
   "requires" => {
     "File::Flock" => 0,
+    "List::MoreUtils" => 0,
     "Log::Any" => 0,
     "Rinci" => "v1.1.28",
     "UUID::Random" => 0,
