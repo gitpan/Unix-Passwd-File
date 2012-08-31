@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use Log::Any '$log';
 
-our $VERSION = '0.02'; # VERSION
+our $VERSION = '0.03'; # VERSION
 
 use File::Flock;
 use List::Util qw(max first);
@@ -55,12 +55,12 @@ _
     },
 );
 
-my $re_user   = qr/\A[A-Za-z0-9._-]+\z/;
-my $re_group  = $re_user;
-my $re_field  = qr/\A[^\n:]*\z/;
-my $re_posint = qr/\A[1-9][0-9]*\z/;
+our $re_user   = qr/\A[A-Za-z0-9._-]+\z/;
+our $re_group  = $re_user;
+our $re_field  = qr/\A[^\n:]*\z/;
+our $re_posint = qr/\A[1-9][0-9]*\z/;
 
-my %passwd_fields = (
+our %passwd_fields = (
     user => {
         index   => 0,
         schema  => ['str*' => {match => $re_user}],
@@ -98,13 +98,13 @@ my %passwd_fields = (
         summary => 'User\'s home directory',
     },
 );
-my @passwd_field_names;
+our @passwd_field_names;
 for (keys %passwd_fields) {
     $passwd_field_names[$passwd_fields{$_}{index}] = $_;
     delete $passwd_fields{$_}{index};
 }
 
-my %shadow_fields = (
+our %shadow_fields = (
     user => {
         index   => 0,
         schema  => ['str*' => {match => $re_user}],
@@ -158,13 +158,13 @@ my %shadow_fields = (
         summary => 'This field is reserved for future use',
     }
 );
-my @shadow_field_names;
+our @shadow_field_names;
 for (keys %shadow_fields) {
     $shadow_field_names[$shadow_fields{$_}{index}] = $_;
     delete $shadow_fields{$_}{index};
 }
 
-my %group_fields = (
+our %group_fields = (
     group => {
         index   => 0,
         schema  => ['str*' => {match => $re_group}],
@@ -188,13 +188,13 @@ my %group_fields = (
             'separated by commas',
     },
 );
-my @group_field_names;
+our @group_field_names;
 for (keys %group_fields) {
     $group_field_names[$group_fields{$_}{index}] = $_;
     delete $group_fields{$_}{index};
 }
 
-my %gshadow_fields = (
+our %gshadow_fields = (
     group => {
         index   => 0,
         schema  => ['str*' => {match => $re_group}],
@@ -218,7 +218,7 @@ my %gshadow_fields = (
                 '/etc/group.',
     },
 );
-my @gshadow_field_names;
+our @gshadow_field_names;
 for (keys %gshadow_fields) {
     $gshadow_field_names[$gshadow_fields{$_}{index}] = $_;
     delete $gshadow_fields{$_}{index};
@@ -1550,13 +1550,13 @@ Unix::Passwd::File - Manipulate /etc/{passwd,shadow,group,gshadow} entries
 
 =head1 VERSION
 
-version 0.02
+version 0.03
 
 =head1 SYNOPSIS
 
  use Unix::Passwd::Files;
 
- # by default uses files in /etc (/etc/passwd, /etc/shadow, et al)
+ # list users. by default uses files in /etc (/etc/passwd, /etc/shadow, et al)
  my $res = list_users(); # [200, "OK", ["root", ...]]
 
  # change location of files, return details
@@ -1567,9 +1567,19 @@ version 0.02
  $res = list_users(detail=>1, with_field_names=>0);
      # [200, "OK", [["root", "x", 0, ...], ...]]
 
- # getting user/group
+ # get user/group information
  $res = get_group(user=>"buzz"); # [200, "OK", {user=>"buzz", uid=>501, ...}]
  $res = get_user(user=>"neil");  # [404, "Not found"]
+
+ # check whether user/group exists
+ say user_exists(user=>"buzz");   # 1
+ say group_exists(group=>"neil"); # 0
+
+ # get all groups that user is member of
+ $res = get_user_groups(user=>"buzz"); # [200, "OK", ["buzz", "nasa"]]
+
+ # check whether user is member of a group
+ $res = is_member(user=>"buzz", group=>"nasa"); # 1
 
  # adding user/group, by default adding user will also add a group with the same
  # name
@@ -1585,14 +1595,15 @@ version 0.02
 
  # change user password
  $res = set_user_password(user=>"steven", pass=>"foobar");
+ $res = modify_user(user=>"steven", pass=>"foobar"); # same thing
 
  # add/delete user to/from group
  $res = add_user_to_group(user=>"steven", group=>"wheel");
  $res = delete_user_from_group(user=>"steven", group=>"wheel");
 
  # others
- $res = get_max_uid();
- $res = get_max_gid();
+ $res = get_max_uid(); # [200, "OK", 65535]
+ $res = get_max_gid(); # [200, "OK", 65534]
 
 =head1 DESCRIPTION
 
@@ -1643,15 +1654,8 @@ L<Setup::Unix::User> and L<Setup::Unix::Group>, which use this module.
 
 L<Rinci>
 
-=head1 DESCRIPTION
-
-
-This module has L<Rinci> metadata.
-
 =head1 FUNCTIONS
 
-
-None are exported by default, but they are exportable.
 
 =head2 add_group(%args) -> [status, msg, result, meta]
 
@@ -1668,7 +1672,7 @@ Whether to backup when modifying files.
 Backup is written with C<.bak> extension in the same directory. Unmodified file
 will not be backed up. Previous backup will be overwritten.
 
-=item * B<etc_dir> => I<str> (default: "/etc")
+=item * B<etc_dir>* => I<str> (default: "/etc")
 
 Specify location of passwd files.
 
@@ -1676,7 +1680,7 @@ Specify location of passwd files.
 
 Pick a specific new GID.
 
-=item * B<group>* => I<any>
+=item * B<group> => I<any>
 
 =item * B<max_gid> => I<any>
 
@@ -1711,11 +1715,11 @@ Whether to backup when modifying files.
 Backup is written with C<.bak> extension in the same directory. Unmodified file
 will not be backed up. Previous backup will be overwritten.
 
-=item * B<encpass> => I<str>
+=item * B<encpass>* => I<str>
 
 Encrypted password.
 
-=item * B<etc_dir> => I<str> (default: "/etc")
+=item * B<etc_dir>* => I<str> (default: "/etc")
 
 Specify location of passwd files.
 
@@ -1723,7 +1727,7 @@ Specify location of passwd files.
 
 The date of expiration of the account, expressed as the number of days since Jan 1, 1970.
 
-=item * B<gecos> => I<str>
+=item * B<gecos>* => I<str>
 
 Usually, it contains the full username.
 
@@ -1731,13 +1735,13 @@ Usually, it contains the full username.
 
 Pick a specific new GID.
 
-=item * B<home> => I<str>
+=item * B<home>* => I<str>
 
 User's home directory.
 
 =item * B<last_pwchange> => I<int>
 
-The date of the last password change, expressed as the number of days since Jan 1, 1970.
+The date of the last password change, expressed as the number of days since Jan 1, 1970..
 
 =item * B<max_gid> => I<any>
 
@@ -1763,7 +1767,7 @@ The number of days the user will have to wait before she will be allowed to chan
 
 Pick a range for new UID.
 
-=item * B<pass> => I<str>
+=item * B<pass>* => I<str>
 
 Password, generally should be "x" which means password is encrypted in shadow.
 
@@ -1775,7 +1779,7 @@ The number of days after a password has expired (see max_pass_age) during which 
 
 The number of days before a password is going to expire (see max_pass_age) during which the user should be warned.
 
-=item * B<shell> => I<str>
+=item * B<shell>* => I<str>
 
 User's home directory.
 
@@ -1783,7 +1787,7 @@ User's home directory.
 
 Pick a specific new UID.
 
-=item * B<user>* => I<any>
+=item * B<user> => I<any>
 
 =back
 
@@ -1799,9 +1803,9 @@ Arguments ('*' denotes required arguments):
 
 =over 4
 
-=item * B<group>* => I<any>
+=item * B<group> => I<any>
 
-=item * B<user>* => I<any>
+=item * B<user> => I<any>
 
 =back
 
@@ -1824,11 +1828,11 @@ Whether to backup when modifying files.
 Backup is written with C<.bak> extension in the same directory. Unmodified file
 will not be backed up. Previous backup will be overwritten.
 
-=item * B<etc_dir> => I<str> (default: "/etc")
+=item * B<etc_dir>* => I<str> (default: "/etc")
 
 Specify location of passwd files.
 
-=item * B<group>* => I<any>
+=item * B<group> => I<any>
 
 =back
 
@@ -1851,11 +1855,11 @@ Whether to backup when modifying files.
 Backup is written with C<.bak> extension in the same directory. Unmodified file
 will not be backed up. Previous backup will be overwritten.
 
-=item * B<etc_dir> => I<str> (default: "/etc")
+=item * B<etc_dir>* => I<str> (default: "/etc")
 
 Specify location of passwd files.
 
-=item * B<user>* => I<any>
+=item * B<user> => I<any>
 
 =back
 
@@ -1871,9 +1875,9 @@ Arguments ('*' denotes required arguments):
 
 =over 4
 
-=item * B<group>* => I<any>
+=item * B<group> => I<any>
 
-=item * B<user>* => I<any>
+=item * B<user> => I<any>
 
 =back
 
@@ -1893,13 +1897,13 @@ Arguments ('*' denotes required arguments):
 
 =over 4
 
-=item * B<etc_dir> => I<str> (default: "/etc")
+=item * B<etc_dir>* => I<str> (default: "/etc")
 
 Specify location of passwd files.
 
-=item * B<gid> => I<int>
+=item * B<gid>* => I<int>
 
-=item * B<group> => I<str>
+=item * B<group>* => I<str>
 
 =item * B<with_field_names> => I<bool> (default: 1)
 
@@ -1923,7 +1927,7 @@ Arguments ('*' denotes required arguments):
 
 =over 4
 
-=item * B<etc_dir> => I<str> (default: "/etc")
+=item * B<etc_dir>* => I<str> (default: "/etc")
 
 Specify location of passwd files.
 
@@ -1941,7 +1945,7 @@ Arguments ('*' denotes required arguments):
 
 =over 4
 
-=item * B<etc_dir> => I<str> (default: "/etc")
+=item * B<etc_dir>* => I<str> (default: "/etc")
 
 Specify location of passwd files.
 
@@ -1963,13 +1967,13 @@ Arguments ('*' denotes required arguments):
 
 =over 4
 
-=item * B<etc_dir> => I<str> (default: "/etc")
+=item * B<etc_dir>* => I<str> (default: "/etc")
 
 Specify location of passwd files.
 
-=item * B<uid> => I<int>
+=item * B<uid>* => I<int>
 
-=item * B<user> => I<str>
+=item * B<user>* => I<str>
 
 =item * B<with_field_names> => I<bool> (default: 1)
 
@@ -1997,11 +2001,11 @@ Arguments ('*' denotes required arguments):
 
 If true, return all fields instead of just group names.
 
-=item * B<etc_dir> => I<str> (default: "/etc")
+=item * B<etc_dir>* => I<str> (default: "/etc")
 
 Specify location of passwd files.
 
-=item * B<user>* => I<any>
+=item * B<user> => I<any>
 
 =item * B<with_field_names> => I<bool> (default: 1)
 
@@ -2018,7 +2022,7 @@ Return value:
 
 Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
 
-=head2 group_exists(%args) -> bool
+=head2 group_exists(%args) -> [status, msg, result, meta]
 
 Check whether group exists.
 
@@ -2026,19 +2030,21 @@ Arguments ('*' denotes required arguments):
 
 =over 4
 
-=item * B<etc_dir> => I<str> (default: "/etc")
+=item * B<etc_dir>* => I<str> (default: "/etc")
 
 Specify location of passwd files.
 
-=item * B<gid> => I<int>
+=item * B<gid>* => I<int>
 
-=item * B<group> => I<str>
+=item * B<group>* => I<str>
 
 =back
 
 Return value:
 
-=head2 is_member(%args) -> bool
+Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+
+=head2 is_member(%args) -> [status, msg, result, meta]
 
 Check whether user is member of a group.
 
@@ -2046,17 +2052,19 @@ Arguments ('*' denotes required arguments):
 
 =over 4
 
-=item * B<etc_dir> => I<str> (default: "/etc")
+=item * B<etc_dir>* => I<str> (default: "/etc")
 
 Specify location of passwd files.
 
-=item * B<group>* => I<any>
+=item * B<group> => I<any>
 
-=item * B<user>* => I<any>
+=item * B<user> => I<any>
 
 =back
 
 Return value:
+
+Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
 
 =head2 list_groups(%args) -> [status, msg, result, meta]
 
@@ -2070,7 +2078,7 @@ Arguments ('*' denotes required arguments):
 
 If true, return all fields instead of just group names.
 
-=item * B<etc_dir> => I<str> (default: "/etc")
+=item * B<etc_dir>* => I<str> (default: "/etc")
 
 Specify location of passwd files.
 
@@ -2101,7 +2109,7 @@ Arguments ('*' denotes required arguments):
 
 If true, return all fields instead of just usernames.
 
-=item * B<etc_dir> => I<str> (default: "/etc")
+=item * B<etc_dir>* => I<str> (default: "/etc")
 
 Specify location of passwd files.
 
@@ -2131,7 +2139,7 @@ Arguments ('*' denotes required arguments):
 
 =over 4
 
-=item * B<admins> => I<str>
+=item * B<admins>* => I<str>
 
 It must be a comma-separated list of user names, or empty.
 
@@ -2142,27 +2150,27 @@ Whether to backup when modifying files.
 Backup is written with C<.bak> extension in the same directory. Unmodified file
 will not be backed up. Previous backup will be overwritten.
 
-=item * B<encpass> => I<str>
+=item * B<encpass>* => I<str>
 
 Encrypted password.
 
-=item * B<etc_dir> => I<str> (default: "/etc")
+=item * B<etc_dir>* => I<str> (default: "/etc")
 
 Specify location of passwd files.
 
-=item * B<gid> => I<int>
+=item * B<gid>* => I<int>
 
 Numeric group ID.
 
-=item * B<group> => I<str>
+=item * B<group>* => I<str>
 
 Group name.
 
-=item * B<members> => I<str>
+=item * B<members>* => I<str>
 
 List of usernames that are members of this group, separated by commas.
 
-=item * B<pass> => I<str>
+=item * B<pass>* => I<str>
 
 Password, generally should be "x" which means password is encrypted in gshadow.
 
@@ -2190,11 +2198,11 @@ Whether to backup when modifying files.
 Backup is written with C<.bak> extension in the same directory. Unmodified file
 will not be backed up. Previous backup will be overwritten.
 
-=item * B<encpass> => I<str>
+=item * B<encpass>* => I<str>
 
 Encrypted password.
 
-=item * B<etc_dir> => I<str> (default: "/etc")
+=item * B<etc_dir>* => I<str> (default: "/etc")
 
 Specify location of passwd files.
 
@@ -2202,21 +2210,21 @@ Specify location of passwd files.
 
 The date of expiration of the account, expressed as the number of days since Jan 1, 1970.
 
-=item * B<gecos> => I<str>
+=item * B<gecos>* => I<str>
 
 Usually, it contains the full username.
 
-=item * B<gid> => I<int>
+=item * B<gid>* => I<int>
 
 Numeric primary group ID for this user.
 
-=item * B<home> => I<str>
+=item * B<home>* => I<str>
 
 User's home directory.
 
 =item * B<last_pwchange> => I<int>
 
-The date of the last password change, expressed as the number of days since Jan 1, 1970.
+The date of the last password change, expressed as the number of days since Jan 1, 1970..
 
 =item * B<max_pass_age> => I<int>
 
@@ -2226,7 +2234,7 @@ The number of days after which the user will have to change her password.
 
 The number of days the user will have to wait before she will be allowed to change her password again.
 
-=item * B<pass> => I<str>
+=item * B<pass>* => I<str>
 
 Password, generally should be "x" which means password is encrypted in shadow.
 
@@ -2238,15 +2246,15 @@ The number of days after a password has expired (see max_pass_age) during which 
 
 The number of days before a password is going to expire (see max_pass_age) during which the user should be warned.
 
-=item * B<shell> => I<str>
+=item * B<shell>* => I<str>
 
 User's home directory.
 
-=item * B<uid> => I<int>
+=item * B<uid>* => I<int>
 
 Numeric user ID.
 
-=item * B<user> => I<str>
+=item * B<user>* => I<str>
 
 User (login) name.
 
@@ -2271,13 +2279,13 @@ Whether to backup when modifying files.
 Backup is written with C<.bak> extension in the same directory. Unmodified file
 will not be backed up. Previous backup will be overwritten.
 
-=item * B<etc_dir> => I<str> (default: "/etc")
+=item * B<etc_dir>* => I<str> (default: "/etc")
 
 Specify location of passwd files.
 
-=item * B<pass>* => I<any>
+=item * B<pass> => I<any>
 
-=item * B<user>* => I<any>
+=item * B<user> => I<any>
 
 =back
 
@@ -2285,7 +2293,7 @@ Return value:
 
 Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
 
-=head2 user_exists(%args) -> bool
+=head2 user_exists(%args) -> [status, msg, result, meta]
 
 Check whether user exists.
 
@@ -2293,17 +2301,19 @@ Arguments ('*' denotes required arguments):
 
 =over 4
 
-=item * B<etc_dir> => I<str> (default: "/etc")
+=item * B<etc_dir>* => I<str> (default: "/etc")
 
 Specify location of passwd files.
 
-=item * B<uid> => I<int>
+=item * B<uid>* => I<int>
 
-=item * B<user> => I<str>
+=item * B<user>* => I<str>
 
 =back
 
 Return value:
+
+Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
 
 =head1 AUTHOR
 

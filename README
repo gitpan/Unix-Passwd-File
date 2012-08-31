@@ -3,12 +3,12 @@ NAME
     entries
 
 VERSION
-    version 0.02
+    version 0.03
 
 SYNOPSIS
      use Unix::Passwd::Files;
 
-     # by default uses files in /etc (/etc/passwd, /etc/shadow, et al)
+     # list users. by default uses files in /etc (/etc/passwd, /etc/shadow, et al)
      my $res = list_users(); # [200, "OK", ["root", ...]]
 
      # change location of files, return details
@@ -19,9 +19,19 @@ SYNOPSIS
      $res = list_users(detail=>1, with_field_names=>0);
          # [200, "OK", [["root", "x", 0, ...], ...]]
 
-     # getting user/group
+     # get user/group information
      $res = get_group(user=>"buzz"); # [200, "OK", {user=>"buzz", uid=>501, ...}]
      $res = get_user(user=>"neil");  # [404, "Not found"]
+
+     # check whether user/group exists
+     say user_exists(user=>"buzz");   # 1
+     say group_exists(group=>"neil"); # 0
+
+     # get all groups that user is member of
+     $res = get_user_groups(user=>"buzz"); # [200, "OK", ["buzz", "nasa"]]
+
+     # check whether user is member of a group
+     $res = is_member(user=>"buzz", group=>"nasa"); # 1
 
      # adding user/group, by default adding user will also add a group with the same
      # name
@@ -37,14 +47,15 @@ SYNOPSIS
 
      # change user password
      $res = set_user_password(user=>"steven", pass=>"foobar");
+     $res = modify_user(user=>"steven", pass=>"foobar"); # same thing
 
      # add/delete user to/from group
      $res = add_user_to_group(user=>"steven", group=>"wheel");
      $res = delete_user_from_group(user=>"steven", group=>"wheel");
 
      # others
-     $res = get_max_uid();
-     $res = get_max_gid();
+     $res = get_max_uid(); # [200, "OK", 65535]
+     $res = get_max_gid(); # [200, "OK", 65534]
 
 DESCRIPTION
     This module can be used to read and manipulate entries in Unix system
@@ -90,12 +101,7 @@ SEE ALSO
 
     Rinci
 
-DESCRIPTION
-    This module has Rinci metadata.
-
 FUNCTIONS
-    None are exported by default, but they are exportable.
-
   add_group(%args) -> [status, msg, result, meta]
     Add a new group.
 
@@ -109,7 +115,7 @@ FUNCTIONS
         Unmodified file will not be backed up. Previous backup will be
         overwritten.
 
-    *   etc_dir => *str* (default: "/etc")
+    *   etc_dir* => *str* (default: "/etc")
 
         Specify location of passwd files.
 
@@ -117,7 +123,7 @@ FUNCTIONS
 
         Pick a specific new GID.
 
-    *   group* => *any*
+    *   group => *any*
 
     *   max_gid => *any*
 
@@ -153,11 +159,11 @@ FUNCTIONS
         Unmodified file will not be backed up. Previous backup will be
         overwritten.
 
-    *   encpass => *str*
+    *   encpass* => *str*
 
         Encrypted password.
 
-    *   etc_dir => *str* (default: "/etc")
+    *   etc_dir* => *str* (default: "/etc")
 
         Specify location of passwd files.
 
@@ -166,7 +172,7 @@ FUNCTIONS
         The date of expiration of the account, expressed as the number of
         days since Jan 1, 1970.
 
-    *   gecos => *str*
+    *   gecos* => *str*
 
         Usually, it contains the full username.
 
@@ -174,14 +180,14 @@ FUNCTIONS
 
         Pick a specific new GID.
 
-    *   home => *str*
+    *   home* => *str*
 
         User's home directory.
 
     *   last_pwchange => *int*
 
         The date of the last password change, expressed as the number of
-        days since Jan 1, 1970.
+        days since Jan 1, 1970..
 
     *   max_gid => *any*
 
@@ -209,7 +215,7 @@ FUNCTIONS
 
         Pick a range for new UID.
 
-    *   pass => *str*
+    *   pass* => *str*
 
         Password, generally should be "x" which means password is encrypted
         in shadow.
@@ -225,7 +231,7 @@ FUNCTIONS
         The number of days before a password is going to expire (see
         max_pass_age) during which the user should be warned.
 
-    *   shell => *str*
+    *   shell* => *str*
 
         User's home directory.
 
@@ -233,7 +239,7 @@ FUNCTIONS
 
         Pick a specific new UID.
 
-    *   user* => *any*
+    *   user => *any*
 
     Return value:
 
@@ -249,9 +255,9 @@ FUNCTIONS
 
     Arguments ('*' denotes required arguments):
 
-    *   group* => *any*
+    *   group => *any*
 
-    *   user* => *any*
+    *   user => *any*
 
     Return value:
 
@@ -275,11 +281,11 @@ FUNCTIONS
         Unmodified file will not be backed up. Previous backup will be
         overwritten.
 
-    *   etc_dir => *str* (default: "/etc")
+    *   etc_dir* => *str* (default: "/etc")
 
         Specify location of passwd files.
 
-    *   group* => *any*
+    *   group => *any*
 
     Return value:
 
@@ -303,11 +309,11 @@ FUNCTIONS
         Unmodified file will not be backed up. Previous backup will be
         overwritten.
 
-    *   etc_dir => *str* (default: "/etc")
+    *   etc_dir* => *str* (default: "/etc")
 
         Specify location of passwd files.
 
-    *   user* => *any*
+    *   user => *any*
 
     Return value:
 
@@ -323,9 +329,9 @@ FUNCTIONS
 
     Arguments ('*' denotes required arguments):
 
-    *   group* => *any*
+    *   group => *any*
 
-    *   user* => *any*
+    *   user => *any*
 
     Return value:
 
@@ -345,13 +351,13 @@ FUNCTIONS
 
     Arguments ('*' denotes required arguments):
 
-    *   etc_dir => *str* (default: "/etc")
+    *   etc_dir* => *str* (default: "/etc")
 
         Specify location of passwd files.
 
-    *   gid => *int*
+    *   gid* => *int*
 
-    *   group => *str*
+    *   group* => *str*
 
     *   with_field_names => *bool* (default: 1)
 
@@ -376,7 +382,7 @@ FUNCTIONS
 
     Arguments ('*' denotes required arguments):
 
-    *   etc_dir => *str* (default: "/etc")
+    *   etc_dir* => *str* (default: "/etc")
 
         Specify location of passwd files.
 
@@ -394,7 +400,7 @@ FUNCTIONS
 
     Arguments ('*' denotes required arguments):
 
-    *   etc_dir => *str* (default: "/etc")
+    *   etc_dir* => *str* (default: "/etc")
 
         Specify location of passwd files.
 
@@ -416,13 +422,13 @@ FUNCTIONS
 
     Arguments ('*' denotes required arguments):
 
-    *   etc_dir => *str* (default: "/etc")
+    *   etc_dir* => *str* (default: "/etc")
 
         Specify location of passwd files.
 
-    *   uid => *int*
+    *   uid* => *int*
 
-    *   user => *str*
+    *   user* => *str*
 
     *   with_field_names => *bool* (default: 1)
 
@@ -451,11 +457,11 @@ FUNCTIONS
 
         If true, return all fields instead of just group names.
 
-    *   etc_dir => *str* (default: "/etc")
+    *   etc_dir* => *str* (default: "/etc")
 
         Specify location of passwd files.
 
-    *   user* => *any*
+    *   user => *any*
 
     *   with_field_names => *bool* (default: 1)
 
@@ -475,35 +481,49 @@ FUNCTIONS
     the actual result. Fourth element (meta) is called result metadata and
     is optional, a hash that contains extra information.
 
-  group_exists(%args) -> bool
+  group_exists(%args) -> [status, msg, result, meta]
     Check whether group exists.
 
     Arguments ('*' denotes required arguments):
 
-    *   etc_dir => *str* (default: "/etc")
+    *   etc_dir* => *str* (default: "/etc")
 
         Specify location of passwd files.
 
-    *   gid => *int*
+    *   gid* => *int*
 
-    *   group => *str*
+    *   group* => *str*
 
     Return value:
 
-  is_member(%args) -> bool
+    Returns an enveloped result (an array). First element (status) is an
+    integer containing HTTP status code (200 means OK, 4xx caller error, 5xx
+    function error). Second element (msg) is a string containing error
+    message, or 'OK' if status is 200. Third element (result) is optional,
+    the actual result. Fourth element (meta) is called result metadata and
+    is optional, a hash that contains extra information.
+
+  is_member(%args) -> [status, msg, result, meta]
     Check whether user is member of a group.
 
     Arguments ('*' denotes required arguments):
 
-    *   etc_dir => *str* (default: "/etc")
+    *   etc_dir* => *str* (default: "/etc")
 
         Specify location of passwd files.
 
-    *   group* => *any*
+    *   group => *any*
 
-    *   user* => *any*
+    *   user => *any*
 
     Return value:
+
+    Returns an enveloped result (an array). First element (status) is an
+    integer containing HTTP status code (200 means OK, 4xx caller error, 5xx
+    function error). Second element (msg) is a string containing error
+    message, or 'OK' if status is 200. Third element (result) is optional,
+    the actual result. Fourth element (meta) is called result metadata and
+    is optional, a hash that contains extra information.
 
   list_groups(%args) -> [status, msg, result, meta]
     List Unix groups in group file.
@@ -514,7 +534,7 @@ FUNCTIONS
 
         If true, return all fields instead of just group names.
 
-    *   etc_dir => *str* (default: "/etc")
+    *   etc_dir* => *str* (default: "/etc")
 
         Specify location of passwd files.
 
@@ -545,7 +565,7 @@ FUNCTIONS
 
         If true, return all fields instead of just usernames.
 
-    *   etc_dir => *str* (default: "/etc")
+    *   etc_dir* => *str* (default: "/etc")
 
         Specify location of passwd files.
 
@@ -575,7 +595,7 @@ FUNCTIONS
 
     Arguments ('*' denotes required arguments):
 
-    *   admins => *str*
+    *   admins* => *str*
 
         It must be a comma-separated list of user names, or empty.
 
@@ -587,28 +607,28 @@ FUNCTIONS
         Unmodified file will not be backed up. Previous backup will be
         overwritten.
 
-    *   encpass => *str*
+    *   encpass* => *str*
 
         Encrypted password.
 
-    *   etc_dir => *str* (default: "/etc")
+    *   etc_dir* => *str* (default: "/etc")
 
         Specify location of passwd files.
 
-    *   gid => *int*
+    *   gid* => *int*
 
         Numeric group ID.
 
-    *   group => *str*
+    *   group* => *str*
 
         Group name.
 
-    *   members => *str*
+    *   members* => *str*
 
         List of usernames that are members of this group, separated by
         commas.
 
-    *   pass => *str*
+    *   pass* => *str*
 
         Password, generally should be "x" which means password is encrypted
         in gshadow.
@@ -638,11 +658,11 @@ FUNCTIONS
         Unmodified file will not be backed up. Previous backup will be
         overwritten.
 
-    *   encpass => *str*
+    *   encpass* => *str*
 
         Encrypted password.
 
-    *   etc_dir => *str* (default: "/etc")
+    *   etc_dir* => *str* (default: "/etc")
 
         Specify location of passwd files.
 
@@ -651,22 +671,22 @@ FUNCTIONS
         The date of expiration of the account, expressed as the number of
         days since Jan 1, 1970.
 
-    *   gecos => *str*
+    *   gecos* => *str*
 
         Usually, it contains the full username.
 
-    *   gid => *int*
+    *   gid* => *int*
 
         Numeric primary group ID for this user.
 
-    *   home => *str*
+    *   home* => *str*
 
         User's home directory.
 
     *   last_pwchange => *int*
 
         The date of the last password change, expressed as the number of
-        days since Jan 1, 1970.
+        days since Jan 1, 1970..
 
     *   max_pass_age => *int*
 
@@ -678,7 +698,7 @@ FUNCTIONS
         The number of days the user will have to wait before she will be
         allowed to change her password again.
 
-    *   pass => *str*
+    *   pass* => *str*
 
         Password, generally should be "x" which means password is encrypted
         in shadow.
@@ -694,15 +714,15 @@ FUNCTIONS
         The number of days before a password is going to expire (see
         max_pass_age) during which the user should be warned.
 
-    *   shell => *str*
+    *   shell* => *str*
 
         User's home directory.
 
-    *   uid => *int*
+    *   uid* => *int*
 
         Numeric user ID.
 
-    *   user => *str*
+    *   user* => *str*
 
         User (login) name.
 
@@ -728,13 +748,13 @@ FUNCTIONS
         Unmodified file will not be backed up. Previous backup will be
         overwritten.
 
-    *   etc_dir => *str* (default: "/etc")
+    *   etc_dir* => *str* (default: "/etc")
 
         Specify location of passwd files.
 
-    *   pass* => *any*
+    *   pass => *any*
 
-    *   user* => *any*
+    *   user => *any*
 
     Return value:
 
@@ -745,20 +765,27 @@ FUNCTIONS
     the actual result. Fourth element (meta) is called result metadata and
     is optional, a hash that contains extra information.
 
-  user_exists(%args) -> bool
+  user_exists(%args) -> [status, msg, result, meta]
     Check whether user exists.
 
     Arguments ('*' denotes required arguments):
 
-    *   etc_dir => *str* (default: "/etc")
+    *   etc_dir* => *str* (default: "/etc")
 
         Specify location of passwd files.
 
-    *   uid => *int*
+    *   uid* => *int*
 
-    *   user => *str*
+    *   user* => *str*
 
     Return value:
+
+    Returns an enveloped result (an array). First element (status) is an
+    integer containing HTTP status code (200 means OK, 4xx caller error, 5xx
+    function error). Second element (msg) is a string containing error
+    message, or 'OK' if status is 200. Third element (result) is optional,
+    the actual result. Fourth element (meta) is called result metadata and
+    is optional, a hash that contains extra information.
 
 AUTHOR
     Steven Haryanto <stevenharyanto@gmail.com>
