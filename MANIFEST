@@ -9,6 +9,7 @@ README
 dist.ini
 lib/Unix/Passwd/File.pm
 t/00-compile.t
+t/add_delete_user_groups.t
 t/add_group.t
 t/add_user.t
 t/add_user_to_group.t
