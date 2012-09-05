@@ -3,7 +3,7 @@ NAME
     entries
 
 VERSION
-    version 0.07
+    version 0.08
 
 SYNOPSIS
      use Unix::Passwd::File;
@@ -833,6 +833,32 @@ FUNCTIONS
     *   user => *str*
 
         User (login) name.
+
+    Return value:
+
+    Returns an enveloped result (an array). First element (status) is an
+    integer containing HTTP status code (200 means OK, 4xx caller error, 5xx
+    function error). Second element (msg) is a string containing error
+    message, or 'OK' if status is 200. Third element (result) is optional,
+    the actual result. Fourth element (meta) is called result metadata and
+    is optional, a hash that contains extra information.
+
+  set_user_groups(%args) -> [status, msg, result, meta]
+    Set the groups that a user is member of.
+
+    Arguments ('*' denotes required arguments):
+
+    *   etc_dir => *str* (default: "/etc")
+
+        Specify location of passwd files.
+
+    *   groups* => *array* (default: [])
+
+        List of group names that user is member of.
+
+        Aside from this list, user will not belong to any other group.
+
+    *   user* => *any*
 
     Return value:
 

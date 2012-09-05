@@ -46,6 +46,7 @@ t/modify_group.t
 t/modify_user.t
 t/release-pod-coverage.t
 t/release-pod-syntax.t
+t/set_user_groups.t
 t/set_user_password.t
 t/user_exists.t
 weaver.ini
