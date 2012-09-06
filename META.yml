@@ -3,7 +3,6 @@ abstract: 'Manipulate /etc/{passwd,shadow,group,gshadow} entries'
 author:
   - 'Steven Haryanto <stevenharyanto@gmail.com>'
 build_requires:
-  Crypt::Password::Util: 0
   File::Copy::Recursive: 0
   File::Slurp: 0
   File::chdir: 0
@@ -19,13 +18,13 @@ meta-spec:
   version: 1.4
 name: Unix-Passwd-File
 requires:
+  Crypt::Password::Util: 0.06
   File::Flock: 0
   List::MoreUtils: 0
   Log::Any: 0
   Rinci: v1.1.28
-  UUID::Random: 0
   perl: 5.010001
 resources:
   homepage: http://metacpan.org/release/Unix-Passwd-File
   repository: http://github.com/sharyanto/perl-Unix-Passwd-File
-version: 0.09
+version: 0.10
