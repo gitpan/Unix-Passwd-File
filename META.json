@@ -36,6 +36,7 @@
       },
       "test" : {
          "requires" : {
+            "Crypt::Password::Util" : 0,
             "File::Copy::Recursive" : 0,
             "File::Slurp" : 0,
             "File::chdir" : 0,
@@ -50,6 +51,6 @@
          "url" : "http://github.com/sharyanto/perl-Unix-Passwd-File"
       }
    },
-   "version" : "0.08"
+   "version" : "0.09"
 }
 
