@@ -3,7 +3,7 @@ NAME
     entries
 
 VERSION
-    version 0.10
+    version 0.11
 
 SYNOPSIS
      use Unix::Passwd::File;
@@ -72,51 +72,7 @@ DESCRIPTION
 
     No caching is done so you should do your own if you need to.
 
-SEE ALSO
-    Old modules on CPAN which do not support shadow files are pretty useless
-    to me (e.g. Unix::ConfigFile). Shadow passwords have been around since
-    1988 (and in Linux since 1992), FFS!
-
-    Passwd::Unix. I created a fork of Passwd::Unix v0.52 called
-    Passwd::Unix::Alt in 2011 to fix some of the deficiencies/quirks in
-    Passwd::Unix, including: lack of tests, insistence of running as root
-    (despite allowing custom passwd files), use of not-so-ubiquitous bzip2,
-    etc. Then in 2012 I decided to create Unix::Passwd::File. Here are how
-    Unix::Passwd::File differs compared to Passwd::Unix (and
-    Passwd::Unix::Alt):
-
-    *   tests in distribution
-
-    *   no need to run as root
-
-    *   no need to be able to read the shadow file for some operations
-
-        For example, "list_users()" will simply not return the "encpass"
-        field if the shadow file is unreadable. Of course, access to shadow
-        file is required when getting or setting password.
-
-    *   strictly procedural (non-OO) interface
-
-        I consider this a feature :-)
-
-    *   detailed error message for each operation
-
-    *   removal of global error variable
-
-    *   working locking
-
-        Locking is done by locking "passwd.lock" file.
-
-    Setup::Unix::User and Setup::Unix::Group, which use this module.
-
-    Rinci
-
-DESCRIPTION
-    This module has Rinci metadata.
-
 FUNCTIONS
-    None are exported by default, but they are exportable.
-
   add_delete_user_groups(%args) -> [status, msg, result, meta]
     Add or delete user from one or several groups.
 
@@ -152,12 +108,14 @@ FUNCTIONS
 
     Return value:
 
-    Returns an enveloped result (an array). First element (status) is an
-    integer containing HTTP status code (200 means OK, 4xx caller error, 5xx
-    function error). Second element (msg) is a string containing error
-    message, or 'OK' if status is 200. Third element (result) is optional,
-    the actual result. Fourth element (meta) is called result metadata and
-    is optional, a hash that contains extra information.
+    Returns an enveloped result (an array).
+
+    First element (status) is an integer containing HTTP status code (200
+    means OK, 4xx caller error, 5xx function error). Second element (msg) is
+    a string containing error message, or 'OK' if status is 200. Third
+    element (result) is optional, the actual result. Fourth element (meta)
+    is called result metadata and is optional, a hash that contains extra
+    information.
 
   add_group(%args) -> [status, msg, result, meta]
     Add a new group.
@@ -204,12 +162,14 @@ FUNCTIONS
 
     Return value:
 
-    Returns an enveloped result (an array). First element (status) is an
-    integer containing HTTP status code (200 means OK, 4xx caller error, 5xx
-    function error). Second element (msg) is a string containing error
-    message, or 'OK' if status is 200. Third element (result) is optional,
-    the actual result. Fourth element (meta) is called result metadata and
-    is optional, a hash that contains extra information.
+    Returns an enveloped result (an array).
+
+    First element (status) is an integer containing HTTP status code (200
+    means OK, 4xx caller error, 5xx function error). Second element (msg) is
+    a string containing error message, or 'OK' if status is 200. Third
+    element (result) is optional, the actual result. Fourth element (meta)
+    is called result metadata and is optional, a hash that contains extra
+    information.
 
   add_user(%args) -> [status, msg, result, meta]
     Add a new user.
@@ -327,12 +287,14 @@ FUNCTIONS
 
     Return value:
 
-    Returns an enveloped result (an array). First element (status) is an
-    integer containing HTTP status code (200 means OK, 4xx caller error, 5xx
-    function error). Second element (msg) is a string containing error
-    message, or 'OK' if status is 200. Third element (result) is optional,
-    the actual result. Fourth element (meta) is called result metadata and
-    is optional, a hash that contains extra information.
+    Returns an enveloped result (an array).
+
+    First element (status) is an integer containing HTTP status code (200
+    means OK, 4xx caller error, 5xx function error). Second element (msg) is
+    a string containing error message, or 'OK' if status is 200. Third
+    element (result) is optional, the actual result. Fourth element (meta)
+    is called result metadata and is optional, a hash that contains extra
+    information.
 
   add_user_to_group(%args) -> [status, msg, result, meta]
     Add user to a group.
@@ -349,12 +311,14 @@ FUNCTIONS
 
     Return value:
 
-    Returns an enveloped result (an array). First element (status) is an
-    integer containing HTTP status code (200 means OK, 4xx caller error, 5xx
-    function error). Second element (msg) is a string containing error
-    message, or 'OK' if status is 200. Third element (result) is optional,
-    the actual result. Fourth element (meta) is called result metadata and
-    is optional, a hash that contains extra information.
+    Returns an enveloped result (an array).
+
+    First element (status) is an integer containing HTTP status code (200
+    means OK, 4xx caller error, 5xx function error). Second element (msg) is
+    a string containing error message, or 'OK' if status is 200. Third
+    element (result) is optional, the actual result. Fourth element (meta)
+    is called result metadata and is optional, a hash that contains extra
+    information.
 
   delete_group(%args) -> [status, msg, result, meta]
     Delete a group.
@@ -377,12 +341,14 @@ FUNCTIONS
 
     Return value:
 
-    Returns an enveloped result (an array). First element (status) is an
-    integer containing HTTP status code (200 means OK, 4xx caller error, 5xx
-    function error). Second element (msg) is a string containing error
-    message, or 'OK' if status is 200. Third element (result) is optional,
-    the actual result. Fourth element (meta) is called result metadata and
-    is optional, a hash that contains extra information.
+    Returns an enveloped result (an array).
+
+    First element (status) is an integer containing HTTP status code (200
+    means OK, 4xx caller error, 5xx function error). Second element (msg) is
+    a string containing error message, or 'OK' if status is 200. Third
+    element (result) is optional, the actual result. Fourth element (meta)
+    is called result metadata and is optional, a hash that contains extra
+    information.
 
   delete_user(%args) -> [status, msg, result, meta]
     Delete a user.
@@ -405,12 +371,14 @@ FUNCTIONS
 
     Return value:
 
-    Returns an enveloped result (an array). First element (status) is an
-    integer containing HTTP status code (200 means OK, 4xx caller error, 5xx
-    function error). Second element (msg) is a string containing error
-    message, or 'OK' if status is 200. Third element (result) is optional,
-    the actual result. Fourth element (meta) is called result metadata and
-    is optional, a hash that contains extra information.
+    Returns an enveloped result (an array).
+
+    First element (status) is an integer containing HTTP status code (200
+    means OK, 4xx caller error, 5xx function error). Second element (msg) is
+    a string containing error message, or 'OK' if status is 200. Third
+    element (result) is optional, the actual result. Fourth element (meta)
+    is called result metadata and is optional, a hash that contains extra
+    information.
 
   delete_user_from_group(%args) -> [status, msg, result, meta]
     Delete user from a group.
@@ -427,12 +395,14 @@ FUNCTIONS
 
     Return value:
 
-    Returns an enveloped result (an array). First element (status) is an
-    integer containing HTTP status code (200 means OK, 4xx caller error, 5xx
-    function error). Second element (msg) is a string containing error
-    message, or 'OK' if status is 200. Third element (result) is optional,
-    the actual result. Fourth element (meta) is called result metadata and
-    is optional, a hash that contains extra information.
+    Returns an enveloped result (an array).
+
+    First element (status) is an integer containing HTTP status code (200
+    means OK, 4xx caller error, 5xx function error). Second element (msg) is
+    a string containing error message, or 'OK' if status is 200. Third
+    element (result) is optional, the actual result. Fourth element (meta)
+    is called result metadata and is optional, a hash that contains extra
+    information.
 
   get_group(%args) -> [status, msg, result, meta]
     Get group details by group name or gid.
@@ -462,12 +432,14 @@ FUNCTIONS
 
     Return value:
 
-    Returns an enveloped result (an array). First element (status) is an
-    integer containing HTTP status code (200 means OK, 4xx caller error, 5xx
-    function error). Second element (msg) is a string containing error
-    message, or 'OK' if status is 200. Third element (result) is optional,
-    the actual result. Fourth element (meta) is called result metadata and
-    is optional, a hash that contains extra information.
+    Returns an enveloped result (an array).
+
+    First element (status) is an integer containing HTTP status code (200
+    means OK, 4xx caller error, 5xx function error). Second element (msg) is
+    a string containing error message, or 'OK' if status is 200. Third
+    element (result) is optional, the actual result. Fourth element (meta)
+    is called result metadata and is optional, a hash that contains extra
+    information.
 
   get_max_gid(%args) -> [status, msg, result, meta]
     Get maximum GID used.
@@ -480,12 +452,14 @@ FUNCTIONS
 
     Return value:
 
-    Returns an enveloped result (an array). First element (status) is an
-    integer containing HTTP status code (200 means OK, 4xx caller error, 5xx
-    function error). Second element (msg) is a string containing error
-    message, or 'OK' if status is 200. Third element (result) is optional,
-    the actual result. Fourth element (meta) is called result metadata and
-    is optional, a hash that contains extra information.
+    Returns an enveloped result (an array).
+
+    First element (status) is an integer containing HTTP status code (200
+    means OK, 4xx caller error, 5xx function error). Second element (msg) is
+    a string containing error message, or 'OK' if status is 200. Third
+    element (result) is optional, the actual result. Fourth element (meta)
+    is called result metadata and is optional, a hash that contains extra
+    information.
 
   get_max_uid(%args) -> [status, msg, result, meta]
     Get maximum UID used.
@@ -498,12 +472,14 @@ FUNCTIONS
 
     Return value:
 
-    Returns an enveloped result (an array). First element (status) is an
-    integer containing HTTP status code (200 means OK, 4xx caller error, 5xx
-    function error). Second element (msg) is a string containing error
-    message, or 'OK' if status is 200. Third element (result) is optional,
-    the actual result. Fourth element (meta) is called result metadata and
-    is optional, a hash that contains extra information.
+    Returns an enveloped result (an array).
+
+    First element (status) is an integer containing HTTP status code (200
+    means OK, 4xx caller error, 5xx function error). Second element (msg) is
+    a string containing error message, or 'OK' if status is 200. Third
+    element (result) is optional, the actual result. Fourth element (meta)
+    is called result metadata and is optional, a hash that contains extra
+    information.
 
   get_user(%args) -> [status, msg, result, meta]
     Get user details by username or uid.
@@ -533,12 +509,14 @@ FUNCTIONS
 
     Return value:
 
-    Returns an enveloped result (an array). First element (status) is an
-    integer containing HTTP status code (200 means OK, 4xx caller error, 5xx
-    function error). Second element (msg) is a string containing error
-    message, or 'OK' if status is 200. Third element (result) is optional,
-    the actual result. Fourth element (meta) is called result metadata and
-    is optional, a hash that contains extra information.
+    Returns an enveloped result (an array).
+
+    First element (status) is an integer containing HTTP status code (200
+    means OK, 4xx caller error, 5xx function error). Second element (msg) is
+    a string containing error message, or 'OK' if status is 200. Third
+    element (result) is optional, the actual result. Fourth element (meta)
+    is called result metadata and is optional, a hash that contains extra
+    information.
 
   get_user_groups(%args) -> [status, msg, result, meta]
     Return groups which the user belongs to.
@@ -566,12 +544,14 @@ FUNCTIONS
 
     Return value:
 
-    Returns an enveloped result (an array). First element (status) is an
-    integer containing HTTP status code (200 means OK, 4xx caller error, 5xx
-    function error). Second element (msg) is a string containing error
-    message, or 'OK' if status is 200. Third element (result) is optional,
-    the actual result. Fourth element (meta) is called result metadata and
-    is optional, a hash that contains extra information.
+    Returns an enveloped result (an array).
+
+    First element (status) is an integer containing HTTP status code (200
+    means OK, 4xx caller error, 5xx function error). Second element (msg) is
+    a string containing error message, or 'OK' if status is 200. Third
+    element (result) is optional, the actual result. Fourth element (meta)
+    is called result metadata and is optional, a hash that contains extra
+    information.
 
   group_exists(%args) -> bool
     Check whether group exists.
@@ -627,12 +607,14 @@ FUNCTIONS
 
     Return value:
 
-    Returns an enveloped result (an array). First element (status) is an
-    integer containing HTTP status code (200 means OK, 4xx caller error, 5xx
-    function error). Second element (msg) is a string containing error
-    message, or 'OK' if status is 200. Third element (result) is optional,
-    the actual result. Fourth element (meta) is called result metadata and
-    is optional, a hash that contains extra information.
+    Returns an enveloped result (an array).
+
+    First element (status) is an integer containing HTTP status code (200
+    means OK, 4xx caller error, 5xx function error). Second element (msg) is
+    a string containing error message, or 'OK' if status is 200. Third
+    element (result) is optional, the actual result. Fourth element (meta)
+    is called result metadata and is optional, a hash that contains extra
+    information.
 
   list_users(%args) -> [status, msg, result, meta]
     List Unix users in passwd file.
@@ -658,12 +640,14 @@ FUNCTIONS
 
     Return value:
 
-    Returns an enveloped result (an array). First element (status) is an
-    integer containing HTTP status code (200 means OK, 4xx caller error, 5xx
-    function error). Second element (msg) is a string containing error
-    message, or 'OK' if status is 200. Third element (result) is optional,
-    the actual result. Fourth element (meta) is called result metadata and
-    is optional, a hash that contains extra information.
+    Returns an enveloped result (an array).
+
+    First element (status) is an integer containing HTTP status code (200
+    means OK, 4xx caller error, 5xx function error). Second element (msg) is
+    a string containing error message, or 'OK' if status is 200. Third
+    element (result) is optional, the actual result. Fourth element (meta)
+    is called result metadata and is optional, a hash that contains extra
+    information.
 
   list_users_and_groups(%args) -> [status, msg, result, meta]
     List Unix users and groups in passwd/group files.
@@ -688,12 +672,14 @@ FUNCTIONS
 
     Return value:
 
-    Returns an enveloped result (an array). First element (status) is an
-    integer containing HTTP status code (200 means OK, 4xx caller error, 5xx
-    function error). Second element (msg) is a string containing error
-    message, or 'OK' if status is 200. Third element (result) is optional,
-    the actual result. Fourth element (meta) is called result metadata and
-    is optional, a hash that contains extra information.
+    Returns an enveloped result (an array).
+
+    First element (status) is an integer containing HTTP status code (200
+    means OK, 4xx caller error, 5xx function error). Second element (msg) is
+    a string containing error message, or 'OK' if status is 200. Third
+    element (result) is optional, the actual result. Fourth element (meta)
+    is called result metadata and is optional, a hash that contains extra
+    information.
 
   modify_group(%args) -> [status, msg, result, meta]
     Modify an existing group.
@@ -743,12 +729,14 @@ FUNCTIONS
 
     Return value:
 
-    Returns an enveloped result (an array). First element (status) is an
-    integer containing HTTP status code (200 means OK, 4xx caller error, 5xx
-    function error). Second element (msg) is a string containing error
-    message, or 'OK' if status is 200. Third element (result) is optional,
-    the actual result. Fourth element (meta) is called result metadata and
-    is optional, a hash that contains extra information.
+    Returns an enveloped result (an array).
+
+    First element (status) is an integer containing HTTP status code (200
+    means OK, 4xx caller error, 5xx function error). Second element (msg) is
+    a string containing error message, or 'OK' if status is 200. Third
+    element (result) is optional, the actual result. Fourth element (meta)
+    is called result metadata and is optional, a hash that contains extra
+    information.
 
   modify_user(%args) -> [status, msg, result, meta]
     Modify an existing user.
@@ -836,12 +824,14 @@ FUNCTIONS
 
     Return value:
 
-    Returns an enveloped result (an array). First element (status) is an
-    integer containing HTTP status code (200 means OK, 4xx caller error, 5xx
-    function error). Second element (msg) is a string containing error
-    message, or 'OK' if status is 200. Third element (result) is optional,
-    the actual result. Fourth element (meta) is called result metadata and
-    is optional, a hash that contains extra information.
+    Returns an enveloped result (an array).
+
+    First element (status) is an integer containing HTTP status code (200
+    means OK, 4xx caller error, 5xx function error). Second element (msg) is
+    a string containing error message, or 'OK' if status is 200. Third
+    element (result) is optional, the actual result. Fourth element (meta)
+    is called result metadata and is optional, a hash that contains extra
+    information.
 
   set_user_groups(%args) -> [status, msg, result, meta]
     Set the groups that a user is member of.
@@ -862,12 +852,14 @@ FUNCTIONS
 
     Return value:
 
-    Returns an enveloped result (an array). First element (status) is an
-    integer containing HTTP status code (200 means OK, 4xx caller error, 5xx
-    function error). Second element (msg) is a string containing error
-    message, or 'OK' if status is 200. Third element (result) is optional,
-    the actual result. Fourth element (meta) is called result metadata and
-    is optional, a hash that contains extra information.
+    Returns an enveloped result (an array).
+
+    First element (status) is an integer containing HTTP status code (200
+    means OK, 4xx caller error, 5xx function error). Second element (msg) is
+    a string containing error message, or 'OK' if status is 200. Third
+    element (result) is optional, the actual result. Fourth element (meta)
+    is called result metadata and is optional, a hash that contains extra
+    information.
 
   set_user_password(%args) -> [status, msg, result, meta]
     Set user's password.
@@ -892,12 +884,14 @@ FUNCTIONS
 
     Return value:
 
-    Returns an enveloped result (an array). First element (status) is an
-    integer containing HTTP status code (200 means OK, 4xx caller error, 5xx
-    function error). Second element (msg) is a string containing error
-    message, or 'OK' if status is 200. Third element (result) is optional,
-    the actual result. Fourth element (meta) is called result metadata and
-    is optional, a hash that contains extra information.
+    Returns an enveloped result (an array).
+
+    First element (status) is an integer containing HTTP status code (200
+    means OK, 4xx caller error, 5xx function error). Second element (msg) is
+    a string containing error message, or 'OK' if status is 200. Third
+    element (result) is optional, the actual result. Fourth element (meta)
+    is called result metadata and is optional, a hash that contains extra
+    information.
 
   user_exists(%args) -> bool
     Check whether user exists.
@@ -914,11 +908,65 @@ FUNCTIONS
 
     Return value:
 
+SEE ALSO
+    Old modules on CPAN which do not support shadow files are pretty useless
+    to me (e.g. Unix::ConfigFile). Shadow passwords have been around since
+    1988 (and in Linux since 1992), FFS!
+
+    Passwd::Unix. I created a fork of Passwd::Unix v0.52 called
+    Passwd::Unix::Alt in 2011 to fix some of the deficiencies/quirks in
+    Passwd::Unix, including: lack of tests, insistence of running as root
+    (despite allowing custom passwd files), use of not-so-ubiquitous bzip2,
+    etc. Then in 2012 I decided to create Unix::Passwd::File. Here are how
+    Unix::Passwd::File differs compared to Passwd::Unix (and
+    Passwd::Unix::Alt):
+
+    *   tests in distribution
+
+    *   no need to run as root
+
+    *   no need to be able to read the shadow file for some operations
+
+        For example, "list_users()" will simply not return the "encpass"
+        field if the shadow file is unreadable. Of course, access to shadow
+        file is required when getting or setting password.
+
+    *   strictly procedural (non-OO) interface
+
+        I consider this a feature :-)
+
+    *   detailed error message for each operation
+
+    *   removal of global error variable
+
+    *   working locking
+
+        Locking is done by locking "passwd.lock" file.
+
+    Setup::Unix::User and Setup::Unix::Group, which use this module.
+
+    Rinci
+
+HOMEPAGE
+    Please visit the project's homepage at
+    <https://metacpan.org/release/Unix-Passwd-File>.
+
+SOURCE
+    Source repository is at
+    <https://github.com/sharyanto/perl-Unix-Passwd-File>.
+
+BUGS
+    Please report any bugs or feature requests on the bugtracker website
+    <https://rt.cpan.org/Public/Dist/Display.html?Name=Unix-Passwd-File>
+
+    When submitting a bug or request, please include a test-file or a patch
+    to an existing test-file that illustrates the bug or desired feature.
+
 AUTHOR
     Steven Haryanto <stevenharyanto@gmail.com>
 
 COPYRIGHT AND LICENSE
-    This software is copyright (c) 2012 by Steven Haryanto.
+    This software is copyright (c) 2014 by Steven Haryanto.
 
     This is free software; you can redistribute it and/or modify it under
     the same terms as the Perl 5 programming language system itself.

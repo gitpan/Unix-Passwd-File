@@ -1,11 +1,12 @@
 package Unix::Passwd::File;
 
-use 5.010;
+use 5.010001;
 use strict;
 use warnings;
+use experimental 'smartmatch';
 use Log::Any '$log';
 
-our $VERSION = '0.10'; # VERSION
+our $VERSION = '0.11'; # VERSION
 
 use File::Flock;
 use List::Util qw(max first);
@@ -945,7 +946,6 @@ sub is_member {
     my $user  = $args{user}  or return undef;
     my $group = $args{group} or return undef;
     my $res = get_group(etc_dir=>$args{etc_dir}, group=>$group);
-    $log->errorf("res=%s", $res);
     return undef unless $res->[0] == 200;
     my @mm = split /,/, $res->[2]{members};
     return $user ~~ @mm ? 1:0;
@@ -1018,13 +1018,15 @@ sub _add_group_or_user {
     my $create_group = 1;
     if ($which eq 'user') {
         $user = $args{user} or return [400, "Please specify user"];
-        $user =~ $re_user or return [400, "Invalid user, please use $re_user"];
+        $user =~ /$re_user/o
+            or return [400, "Invalid user, please use $re_user"];
         $gn = $args{group} // $user;
         $create_group = 0 if $gn ne $user;
     }
     $gn //= $args{group};
     $gn or return [400, "Please specify group"];
-    $gn =~ $re_group or return [400, "Invalid group, please use $re_group"];
+    $gn =~ /$re_group/o
+        or return [400, "Invalid group, please use $re_group"];
 
     my $gid     = $args{gid};
     my $min_gid = $args{min_gid} //  1000; $min_gid =     0 if $min_gid<0;
@@ -1036,7 +1038,7 @@ sub _add_group_or_user {
             $members = join(",",@$members);
         }
         $members //= "";
-        $members =~ $re_field
+        $members =~ /$re_field/o
             or return [400, "Invalid members, please use $re_field"];
     } else {
         $members = "$user";
@@ -1052,29 +1054,30 @@ sub _add_group_or_user {
         $max_uid = $args{max_uid} // 65535; $max_uid = 65535 if $min_uid>65535;
 
         $pass = $args{pass} // "";
-        if ($pass !~ $re_field) { return [400, "Invalid pass"] }
+        if ($pass !~ /$re_field/o) { return [400, "Invalid pass"] }
 
         $gecos = $args{gecos} // "";
-        if ($gecos !~ $re_field) { return [400, "Invalid gecos"] }
+        if ($gecos !~ /$re_field/o) { return [400, "Invalid gecos"] }
 
         $home = $args{home} // "";
-        if ($home !~ $re_field) { return [400, "Invalid home"] }
+        if ($home !~ /$re_field/o) { return [400, "Invalid home"] }
 
         $shell = $args{shell} // "";
-        if ($shell !~ $re_field) { return [400, "Invalid shell"] }
+        if ($shell !~ /$re_field/o) { return [400, "Invalid shell"] }
 
         $encpass = $args{encpass} // ($pass eq '' ? '*' : _enc_pass($pass));
-        if ($encpass !~ $re_field) { return [400, "Invalid encpass"] }
+        if ($encpass !~ /$re_field/o) { return [400, "Invalid encpass"] }
 
         $last_pwchange = int($args{last_pwchange} // time()/86400);
         $min_pass_age  = int($args{min_pass_age} // 0);
         $max_pass_age  = int($args{max_pass_age} // 99999);
         $pass_warn_period = int($args{max_pass_age} // 7);
         $pass_inactive_period = $args{pass_inactive_period} // "";
-        if ($pass_inactive_period !~ $re_field) {
+        if ($pass_inactive_period !~ /$re_field/o) {
             return [400, "Invalid pass_inactive_period"] }
         $expire_date = $args{expire_date} // "";
-        if ($expire_date !~ $re_field) { return [400, "Invalid expire_date"] }
+        if ($expire_date !~ /$re_field/o) {
+            return [400, "Invalid expire_date"] }
     }
 
     _routine(
@@ -1282,54 +1285,54 @@ sub _modify_group_or_user {
     }
 
     if ($which eq 'user') {
-        if (defined($args{uid}) && $args{uid} !~ $re_posint) {
+        if (defined($args{uid}) && $args{uid} !~ /$re_posint/o) {
             return [400, "Invalid uid"] }
-        if (defined($args{gid}) && $args{gid} !~ $re_posint) {
+        if (defined($args{gid}) && $args{gid} !~ /$re_posint/o) {
             return [400, "Invalid gid"] }
-        if (defined($args{gecos}) && $args{gecos} !~ $re_field) {
+        if (defined($args{gecos}) && $args{gecos} !~ /$re_field/o) {
             return [400, "Invalid gecos"] }
-        if (defined($args{home}) && $args{home} !~ $re_field) {
+        if (defined($args{home}) && $args{home} !~ /$re_field/o) {
             return [400, "Invalid home"] }
-        if (defined($args{shell}) && $args{shell} !~ $re_field) {
+        if (defined($args{shell}) && $args{shell} !~ /$re_field/o) {
             return [400, "Invalid shell"] }
         if (defined $args{pass}) {
             $args{encpass} = $args{pass} eq '' ? '*' : _enc_pass($args{pass});
             $args{pass} = "x";
         }
-        if (defined($args{encpass}) && $args{encpass} !~ $re_field) {
+        if (defined($args{encpass}) && $args{encpass} !~ /$re_field/o) {
             return [400, "Invalid encpass"] }
-        if (defined($args{last_pwchange}) && $args{last_pwchange} !~ $re_posint) {
+        if (defined($args{last_pwchange}) && $args{last_pwchange} !~ /$re_posint/o) {
             return [400, "Invalid last_pwchange"] }
-        if (defined($args{min_pass_age}) && $args{min_pass_age} !~ $re_posint) {
+        if (defined($args{min_pass_age}) && $args{min_pass_age} !~ /$re_posint/o) {
             return [400, "Invalid min_pass_age"] }
-        if (defined($args{max_pass_age}) && $args{max_pass_age} !~ $re_posint) {
+        if (defined($args{max_pass_age}) && $args{max_pass_age} !~ /$re_posint/o) {
             return [400, "Invalid max_pass_age"] }
-        if (defined($args{pass_warn_period}) && $args{pass_warn_period} !~ $re_posint) {
+        if (defined($args{pass_warn_period}) && $args{pass_warn_period} !~ /$re_posint/o) {
             return [400, "Invalid pass_warn_period"] }
         if (defined($args{pass_inactive_period}) &&
-                $args{pass_inactive_period} !~ $re_posint) {
+                $args{pass_inactive_period} !~ /$re_posint/o) {
             return [400, "Invalid pass_inactive_period"] }
-        if (defined($args{expire_date}) && $args{expire_date} !~ $re_posint) {
+        if (defined($args{expire_date}) && $args{expire_date} !~ /$re_posint/o) {
             return [400, "Invalid expire_date"] }
     }
 
     my ($gid, $members);
     if ($which eq 'group') {
-        if (defined($args{gid}) && $args{gid} !~ $re_posint) {
+        if (defined($args{gid}) && $args{gid} !~ /$re_posint/o) {
             return [400, "Invalid gid"] }
         if (defined $args{pass}) {
             $args{encpass} = $args{pass} eq '' ? '*' : _enc_pass($args{pass});
             $args{pass} = "x";
         }
-        if (defined($args{encpass}) && $args{encpass} !~ $re_field) {
+        if (defined($args{encpass}) && $args{encpass} !~ /$re_field/o) {
             return [400, "Invalid encpass"] }
         if (defined $args{members}) {
             if (ref($args{members}) eq 'ARRAY') { $args{members} = join(",",@{$args{members}}) }
-            $args{members} =~ $re_field or return [400, "Invalid members"];
+            $args{members} =~ /$re_field/o or return [400, "Invalid members"];
         }
         if (defined $args{admins}) {
             if (ref($args{admins}) eq 'ARRAY') { $args{admins} = join(",",@{$args{admins}}) }
-            $args{admins} =~ $re_field or return [400, "Invalid admins"];
+            $args{admins} =~ /$re_field/o or return [400, "Invalid admins"];
         }
     }
 
@@ -1476,7 +1479,7 @@ $SPEC{add_user_to_group} = {
 sub add_user_to_group {
     my %args = @_;
     my $user = $args{user} or return [400, "Please specify user"];
-    $user =~ $re_user or return [400, "Invalid user"];
+    $user =~ /$re_user/o or return [400, "Invalid user"];
     my $gn   = $args{group}; # will be required by modify_group
 
     # XXX check user exists
@@ -1511,7 +1514,7 @@ $SPEC{delete_user_from_group} = {
 sub delete_user_from_group {
     my %args = @_;
     my $user = $args{user} or return [400, "Please specify user"];
-    $user =~ $re_user or return [400, "Invalid user"];
+    $user =~ /$re_user/o or return [400, "Invalid user"];
     my $gn   = $args{group}; # will be required by modify_group
 
     # XXX check user exists
@@ -1567,7 +1570,7 @@ _
 sub add_delete_user_groups {
     my %args = @_;
     my $user = $args{user} or return [400, "Please specify user"];
-    $user =~ $re_user or return [400, "Invalid user"];
+    $user =~ /$re_user/o or return [400, "Invalid user"];
     my $add  = $args{add_to} // [];
     my $del  = $args{delete_from} // [];
 
@@ -1627,7 +1630,7 @@ _
 sub set_user_groups {
     my %args = @_;
     my $user = $args{user} or return [400, "Please specify user"];
-    $user =~ $re_user or return [400, "Invalid user"];
+    $user =~ /$re_user/o or return [400, "Invalid user"];
     my $gg   = $args{groups} or return [400, "Please specify groups"];
 
     # XXX check user exists
@@ -1812,9 +1815,11 @@ sub delete_user {
 1;
 # ABSTRACT: Manipulate /etc/{passwd,shadow,group,gshadow} entries
 
-
 __END__
+
 =pod
+
+=encoding UTF-8
 
 =head1 NAME
 
@@ -1822,7 +1827,7 @@ Unix::Passwd::File - Manipulate /etc/{passwd,shadow,group,gshadow} entries
 
 =head1 VERSION
 
-version 0.10
+version 0.11
 
 =head1 SYNOPSIS
 
@@ -1892,58 +1897,8 @@ beginning and write back the files.
 
 No caching is done so you should do your own if you need to.
 
-=head1 SEE ALSO
-
-Old modules on CPAN which do not support shadow files are pretty useless to me
-(e.g. L<Unix::ConfigFile>). Shadow passwords have been around since 1988 (and in
-Linux since 1992), FFS!
-
-L<Passwd::Unix>. I created a fork of Passwd::Unix v0.52 called
-L<Passwd::Unix::Alt> in 2011 to fix some of the deficiencies/quirks in
-Passwd::Unix, including: lack of tests, insistence of running as root (despite
-allowing custom passwd files), use of not-so-ubiquitous bzip2, etc. Then in 2012
-I decided to create Unix::Passwd::File. Here are how Unix::Passwd::File differs
-compared to Passwd::Unix (and Passwd::Unix::Alt):
-
-=over 4
-
-=item * tests in distribution
-
-=item * no need to run as root
-
-=item * no need to be able to read the shadow file for some operations
-
-For example, C<list_users()> will simply not return the C<encpass> field if the
-shadow file is unreadable. Of course, access to shadow file is required when
-getting or setting password.
-
-=item * strictly procedural (non-OO) interface
-
-I consider this a feature :-)
-
-=item * detailed error message for each operation
-
-=item * removal of global error variable
-
-=item * working locking
-
-Locking is done by locking C<passwd.lock> file.
-
-=back
-
-L<Setup::Unix::User> and L<Setup::Unix::Group>, which use this module.
-
-L<Rinci>
-
-=head1 DESCRIPTION
-
-
-This module has L<Rinci> metadata.
-
 =head1 FUNCTIONS
 
-
-None are exported by default, but they are exportable.
 
 =head2 add_delete_user_groups(%args) -> [status, msg, result, meta]
 
@@ -1985,7 +1940,14 @@ Specify location of passwd files.
 
 Return value:
 
-Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+Returns an enveloped result (an array).
+
+First element (status) is an integer containing HTTP status code
+(200 means OK, 4xx caller error, 5xx function error). Second element
+(msg) is a string containing error message, or 'OK' if status is
+200. Third element (result) is optional, the actual result. Fourth
+element (meta) is called result metadata and is optional, a hash
+that contains extra information.
 
 =head2 add_group(%args) -> [status, msg, result, meta]
 
@@ -2036,7 +1998,14 @@ returned.
 
 Return value:
 
-Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+Returns an enveloped result (an array).
+
+First element (status) is an integer containing HTTP status code
+(200 means OK, 4xx caller error, 5xx function error). Second element
+(msg) is a string containing error message, or 'OK' if status is
+200. Third element (result) is optional, the actual result. Fourth
+element (meta) is called result metadata and is optional, a hash
+that contains extra information.
 
 =head2 add_user(%args) -> [status, msg, result, meta]
 
@@ -2150,7 +2119,14 @@ Adding a new user with duplicate UID is allowed.
 
 Return value:
 
-Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+Returns an enveloped result (an array).
+
+First element (status) is an integer containing HTTP status code
+(200 means OK, 4xx caller error, 5xx function error). Second element
+(msg) is a string containing error message, or 'OK' if status is
+200. Third element (result) is optional, the actual result. Fourth
+element (meta) is called result metadata and is optional, a hash
+that contains extra information.
 
 =head2 add_user_to_group(%args) -> [status, msg, result, meta]
 
@@ -2172,7 +2148,14 @@ Specify location of passwd files.
 
 Return value:
 
-Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+Returns an enveloped result (an array).
+
+First element (status) is an integer containing HTTP status code
+(200 means OK, 4xx caller error, 5xx function error). Second element
+(msg) is a string containing error message, or 'OK' if status is
+200. Third element (result) is optional, the actual result. Fourth
+element (meta) is called result metadata and is optional, a hash
+that contains extra information.
 
 =head2 delete_group(%args) -> [status, msg, result, meta]
 
@@ -2199,7 +2182,14 @@ Specify location of passwd files.
 
 Return value:
 
-Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+Returns an enveloped result (an array).
+
+First element (status) is an integer containing HTTP status code
+(200 means OK, 4xx caller error, 5xx function error). Second element
+(msg) is a string containing error message, or 'OK' if status is
+200. Third element (result) is optional, the actual result. Fourth
+element (meta) is called result metadata and is optional, a hash
+that contains extra information.
 
 =head2 delete_user(%args) -> [status, msg, result, meta]
 
@@ -2226,7 +2216,14 @@ Specify location of passwd files.
 
 Return value:
 
-Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+Returns an enveloped result (an array).
+
+First element (status) is an integer containing HTTP status code
+(200 means OK, 4xx caller error, 5xx function error). Second element
+(msg) is a string containing error message, or 'OK' if status is
+200. Third element (result) is optional, the actual result. Fourth
+element (meta) is called result metadata and is optional, a hash
+that contains extra information.
 
 =head2 delete_user_from_group(%args) -> [status, msg, result, meta]
 
@@ -2248,7 +2245,14 @@ Specify location of passwd files.
 
 Return value:
 
-Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+Returns an enveloped result (an array).
+
+First element (status) is an integer containing HTTP status code
+(200 means OK, 4xx caller error, 5xx function error). Second element
+(msg) is a string containing error message, or 'OK' if status is
+200. Third element (result) is optional, the actual result. Fourth
+element (meta) is called result metadata and is optional, a hash
+that contains extra information.
 
 =head2 get_group(%args) -> [status, msg, result, meta]
 
@@ -2282,7 +2286,14 @@ arrayref is returned instead: C<["neil", "x", 500, ...]>.
 
 Return value:
 
-Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+Returns an enveloped result (an array).
+
+First element (status) is an integer containing HTTP status code
+(200 means OK, 4xx caller error, 5xx function error). Second element
+(msg) is a string containing error message, or 'OK' if status is
+200. Third element (result) is optional, the actual result. Fourth
+element (meta) is called result metadata and is optional, a hash
+that contains extra information.
 
 =head2 get_max_gid(%args) -> [status, msg, result, meta]
 
@@ -2300,7 +2311,14 @@ Specify location of passwd files.
 
 Return value:
 
-Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+Returns an enveloped result (an array).
+
+First element (status) is an integer containing HTTP status code
+(200 means OK, 4xx caller error, 5xx function error). Second element
+(msg) is a string containing error message, or 'OK' if status is
+200. Third element (result) is optional, the actual result. Fourth
+element (meta) is called result metadata and is optional, a hash
+that contains extra information.
 
 =head2 get_max_uid(%args) -> [status, msg, result, meta]
 
@@ -2318,7 +2336,14 @@ Specify location of passwd files.
 
 Return value:
 
-Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+Returns an enveloped result (an array).
+
+First element (status) is an integer containing HTTP status code
+(200 means OK, 4xx caller error, 5xx function error). Second element
+(msg) is a string containing error message, or 'OK' if status is
+200. Third element (result) is optional, the actual result. Fourth
+element (meta) is called result metadata and is optional, a hash
+that contains extra information.
 
 =head2 get_user(%args) -> [status, msg, result, meta]
 
@@ -2352,7 +2377,14 @@ arrayref is returned instead: C<["neil", "x", 500, ...]>.
 
 Return value:
 
-Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+Returns an enveloped result (an array).
+
+First element (status) is an integer containing HTTP status code
+(200 means OK, 4xx caller error, 5xx function error). Second element
+(msg) is a string containing error message, or 'OK' if status is
+200. Third element (result) is optional, the actual result. Fourth
+element (meta) is called result metadata and is optional, a hash
+that contains extra information.
 
 =head2 get_user_groups(%args) -> [status, msg, result, meta]
 
@@ -2385,7 +2417,14 @@ With C<with_field_names=>0>, an arrayref is returned instead: C<["neil", "x", 50
 
 Return value:
 
-Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+Returns an enveloped result (an array).
+
+First element (status) is an integer containing HTTP status code
+(200 means OK, 4xx caller error, 5xx function error). Second element
+(msg) is a string containing error message, or 'OK' if status is
+200. Third element (result) is optional, the actual result. Fourth
+element (meta) is called result metadata and is optional, a hash
+that contains extra information.
 
 =head2 group_exists(%args) -> bool
 
@@ -2407,6 +2446,7 @@ Specify location of passwd files.
 
 Return value:
 
+
 =head2 is_member(%args) -> bool
 
 Check whether user is member of a group.
@@ -2426,6 +2466,7 @@ Specify location of passwd files.
 =back
 
 Return value:
+
 
 =head2 list_groups(%args) -> [status, msg, result, meta]
 
@@ -2456,7 +2497,14 @@ With C<with_field_names=>0>, an arrayref is returned instead: C<["neil", "x", 50
 
 Return value:
 
-Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+Returns an enveloped result (an array).
+
+First element (status) is an integer containing HTTP status code
+(200 means OK, 4xx caller error, 5xx function error). Second element
+(msg) is a string containing error message, or 'OK' if status is
+200. Third element (result) is optional, the actual result. Fourth
+element (meta) is called result metadata and is optional, a hash
+that contains extra information.
 
 =head2 list_users(%args) -> [status, msg, result, meta]
 
@@ -2487,7 +2535,14 @@ With C<with_field_names=>0>, an arrayref is returned instead: C<["neil", "x", 50
 
 Return value:
 
-Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+Returns an enveloped result (an array).
+
+First element (status) is an integer containing HTTP status code
+(200 means OK, 4xx caller error, 5xx function error). Second element
+(msg) is a string containing error message, or 'OK' if status is
+200. Third element (result) is optional, the actual result. Fourth
+element (meta) is called result metadata and is optional, a hash
+that contains extra information.
 
 =head2 list_users_and_groups(%args) -> [status, msg, result, meta]
 
@@ -2517,7 +2572,14 @@ If false, don't return hash for each entry.
 
 Return value:
 
-Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+Returns an enveloped result (an array).
+
+First element (status) is an integer containing HTTP status code
+(200 means OK, 4xx caller error, 5xx function error). Second element
+(msg) is a string containing error message, or 'OK' if status is
+200. Third element (result) is optional, the actual result. Fourth
+element (meta) is called result metadata and is optional, a hash
+that contains extra information.
 
 =head2 modify_group(%args) -> [status, msg, result, meta]
 
@@ -2569,7 +2631,14 @@ Password, generally should be "x" which means password is encrypted in gshadow.
 
 Return value:
 
-Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+Returns an enveloped result (an array).
+
+First element (status) is an integer containing HTTP status code
+(200 means OK, 4xx caller error, 5xx function error). Second element
+(msg) is a string containing error message, or 'OK' if status is
+200. Third element (result) is optional, the actual result. Fourth
+element (meta) is called result metadata and is optional, a hash
+that contains extra information.
 
 =head2 modify_user(%args) -> [status, msg, result, meta]
 
@@ -2653,7 +2722,14 @@ User (login) name.
 
 Return value:
 
-Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+Returns an enveloped result (an array).
+
+First element (status) is an integer containing HTTP status code
+(200 means OK, 4xx caller error, 5xx function error). Second element
+(msg) is a string containing error message, or 'OK' if status is
+200. Third element (result) is optional, the actual result. Fourth
+element (meta) is called result metadata and is optional, a hash
+that contains extra information.
 
 =head2 set_user_groups(%args) -> [status, msg, result, meta]
 
@@ -2679,7 +2755,14 @@ Aside from this list, user will not belong to any other group.
 
 Return value:
 
-Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+Returns an enveloped result (an array).
+
+First element (status) is an integer containing HTTP status code
+(200 means OK, 4xx caller error, 5xx function error). Second element
+(msg) is a string containing error message, or 'OK' if status is
+200. Third element (result) is optional, the actual result. Fourth
+element (meta) is called result metadata and is optional, a hash
+that contains extra information.
 
 =head2 set_user_password(%args) -> [status, msg, result, meta]
 
@@ -2708,7 +2791,14 @@ Specify location of passwd files.
 
 Return value:
 
-Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
+Returns an enveloped result (an array).
+
+First element (status) is an integer containing HTTP status code
+(200 means OK, 4xx caller error, 5xx function error). Second element
+(msg) is a string containing error message, or 'OK' if status is
+200. Third element (result) is optional, the actual result. Fourth
+element (meta) is called result metadata and is optional, a hash
+that contains extra information.
 
 =head2 user_exists(%args) -> bool
 
@@ -2730,16 +2820,74 @@ Specify location of passwd files.
 
 Return value:
 
+=head1 SEE ALSO
+
+Old modules on CPAN which do not support shadow files are pretty useless to me
+(e.g. L<Unix::ConfigFile>). Shadow passwords have been around since 1988 (and in
+Linux since 1992), FFS!
+
+L<Passwd::Unix>. I created a fork of Passwd::Unix v0.52 called
+L<Passwd::Unix::Alt> in 2011 to fix some of the deficiencies/quirks in
+Passwd::Unix, including: lack of tests, insistence of running as root (despite
+allowing custom passwd files), use of not-so-ubiquitous bzip2, etc. Then in 2012
+I decided to create Unix::Passwd::File. Here are how Unix::Passwd::File differs
+compared to Passwd::Unix (and Passwd::Unix::Alt):
+
+=over 4
+
+=item * tests in distribution
+
+=item * no need to run as root
+
+=item * no need to be able to read the shadow file for some operations
+
+For example, C<list_users()> will simply not return the C<encpass> field if the
+shadow file is unreadable. Of course, access to shadow file is required when
+getting or setting password.
+
+=item * strictly procedural (non-OO) interface
+
+I consider this a feature :-)
+
+=item * detailed error message for each operation
+
+=item * removal of global error variable
+
+=item * working locking
+
+Locking is done by locking C<passwd.lock> file.
+
+=back
+
+L<Setup::Unix::User> and L<Setup::Unix::Group>, which use this module.
+
+L<Rinci>
+
+=head1 HOMEPAGE
+
+Please visit the project's homepage at L<https://metacpan.org/release/Unix-Passwd-File>.
+
+=head1 SOURCE
+
+Source repository is at L<https://github.com/sharyanto/perl-Unix-Passwd-File>.
+
+=head1 BUGS
+
+Please report any bugs or feature requests on the bugtracker website L<https://rt.cpan.org/Public/Dist/Display.html?Name=Unix-Passwd-File>
+
+When submitting a bug or request, please include a test-file or a
+patch to an existing test-file that illustrates the bug or desired
+feature.
+
 =head1 AUTHOR
 
 Steven Haryanto <stevenharyanto@gmail.com>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2012 by Steven Haryanto.
+This software is copyright (c) 2014 by Steven Haryanto.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-
