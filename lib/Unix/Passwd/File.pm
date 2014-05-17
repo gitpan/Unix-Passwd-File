@@ -6,7 +6,7 @@ use warnings;
 use experimental 'smartmatch';
 use Log::Any '$log';
 
-our $VERSION = '0.11'; # VERSION
+our $VERSION = '0.12'; # VERSION
 
 use File::Flock;
 use List::Util qw(max first);
@@ -1827,7 +1827,7 @@ Unix::Passwd::File - Manipulate /etc/{passwd,shadow,group,gshadow} entries
 
 =head1 VERSION
 
-version 0.11
+This document describes version 0.12 of Unix::Passwd::File (from Perl distribution Unix-Passwd-File), released on 2014-05-17.
 
 =head1 SYNOPSIS
 
@@ -1949,6 +1949,7 @@ First element (status) is an integer containing HTTP status code
 element (meta) is called result metadata and is optional, a hash
 that contains extra information.
 
+
 =head2 add_group(%args) -> [status, msg, result, meta]
 
 Add a new group.
@@ -2006,6 +2007,7 @@ First element (status) is an integer containing HTTP status code
 200. Third element (result) is optional, the actual result. Fourth
 element (meta) is called result metadata and is optional, a hash
 that contains extra information.
+
 
 =head2 add_user(%args) -> [status, msg, result, meta]
 
@@ -2128,6 +2130,7 @@ First element (status) is an integer containing HTTP status code
 element (meta) is called result metadata and is optional, a hash
 that contains extra information.
 
+
 =head2 add_user_to_group(%args) -> [status, msg, result, meta]
 
 Add user to a group.
@@ -2156,6 +2159,7 @@ First element (status) is an integer containing HTTP status code
 200. Third element (result) is optional, the actual result. Fourth
 element (meta) is called result metadata and is optional, a hash
 that contains extra information.
+
 
 =head2 delete_group(%args) -> [status, msg, result, meta]
 
@@ -2191,6 +2195,7 @@ First element (status) is an integer containing HTTP status code
 element (meta) is called result metadata and is optional, a hash
 that contains extra information.
 
+
 =head2 delete_user(%args) -> [status, msg, result, meta]
 
 Delete a user.
@@ -2225,6 +2230,7 @@ First element (status) is an integer containing HTTP status code
 element (meta) is called result metadata and is optional, a hash
 that contains extra information.
 
+
 =head2 delete_user_from_group(%args) -> [status, msg, result, meta]
 
 Delete user from a group.
@@ -2253,6 +2259,7 @@ First element (status) is an integer containing HTTP status code
 200. Third element (result) is optional, the actual result. Fourth
 element (meta) is called result metadata and is optional, a hash
 that contains extra information.
+
 
 =head2 get_group(%args) -> [status, msg, result, meta]
 
@@ -2295,6 +2302,7 @@ First element (status) is an integer containing HTTP status code
 element (meta) is called result metadata and is optional, a hash
 that contains extra information.
 
+
 =head2 get_max_gid(%args) -> [status, msg, result, meta]
 
 Get maximum GID used.
@@ -2320,6 +2328,7 @@ First element (status) is an integer containing HTTP status code
 element (meta) is called result metadata and is optional, a hash
 that contains extra information.
 
+
 =head2 get_max_uid(%args) -> [status, msg, result, meta]
 
 Get maximum UID used.
@@ -2344,6 +2353,7 @@ First element (status) is an integer containing HTTP status code
 200. Third element (result) is optional, the actual result. Fourth
 element (meta) is called result metadata and is optional, a hash
 that contains extra information.
+
 
 =head2 get_user(%args) -> [status, msg, result, meta]
 
@@ -2386,6 +2396,7 @@ First element (status) is an integer containing HTTP status code
 element (meta) is called result metadata and is optional, a hash
 that contains extra information.
 
+
 =head2 get_user_groups(%args) -> [status, msg, result, meta]
 
 Return groups which the user belongs to.
@@ -2425,6 +2436,7 @@ First element (status) is an integer containing HTTP status code
 200. Third element (result) is optional, the actual result. Fourth
 element (meta) is called result metadata and is optional, a hash
 that contains extra information.
+
 
 =head2 group_exists(%args) -> bool
 
@@ -2506,6 +2518,7 @@ First element (status) is an integer containing HTTP status code
 element (meta) is called result metadata and is optional, a hash
 that contains extra information.
 
+
 =head2 list_users(%args) -> [status, msg, result, meta]
 
 List Unix users in passwd file.
@@ -2544,6 +2557,7 @@ First element (status) is an integer containing HTTP status code
 element (meta) is called result metadata and is optional, a hash
 that contains extra information.
 
+
 =head2 list_users_and_groups(%args) -> [status, msg, result, meta]
 
 List Unix users and groups in passwd/group files.
@@ -2580,6 +2594,7 @@ First element (status) is an integer containing HTTP status code
 200. Third element (result) is optional, the actual result. Fourth
 element (meta) is called result metadata and is optional, a hash
 that contains extra information.
+
 
 =head2 modify_group(%args) -> [status, msg, result, meta]
 
@@ -2639,6 +2654,7 @@ First element (status) is an integer containing HTTP status code
 200. Third element (result) is optional, the actual result. Fourth
 element (meta) is called result metadata and is optional, a hash
 that contains extra information.
+
 
 =head2 modify_user(%args) -> [status, msg, result, meta]
 
@@ -2731,6 +2747,7 @@ First element (status) is an integer containing HTTP status code
 element (meta) is called result metadata and is optional, a hash
 that contains extra information.
 
+
 =head2 set_user_groups(%args) -> [status, msg, result, meta]
 
 Set the groups that a user is member of.
@@ -2763,6 +2780,7 @@ First element (status) is an integer containing HTTP status code
 200. Third element (result) is optional, the actual result. Fourth
 element (meta) is called result metadata and is optional, a hash
 that contains extra information.
+
 
 =head2 set_user_password(%args) -> [status, msg, result, meta]
 
@@ -2799,6 +2817,7 @@ First element (status) is an integer containing HTTP status code
 200. Third element (result) is optional, the actual result. Fourth
 element (meta) is called result metadata and is optional, a hash
 that contains extra information.
+
 
 =head2 user_exists(%args) -> bool
 
